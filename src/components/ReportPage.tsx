@@ -1,32 +1,70 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Upload, Mic, Search, Sparkles, Camera } from 'lucide-react';
+import { ArrowLeft, Upload, Mic, MapPin, Camera, Loader2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
+import AIAnalysis from './AIAnalysis';
+import LocationMap from './LocationMap';
+import ReportConfirmationModal from './ReportConfirmationModal';
+import { analyzeImage } from '../services/AIService';
+import { getCurrentLocation, submitReport } from '../services/ReportService';
 
 interface ReportPageProps {
   onNavigate: (page: string) => void;
   cameraActive?: boolean;
+  userId?: string;
 }
 
-function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
+function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: ReportPageProps) {
+  // Form states
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('123 Main St, Anytown, USA');
   const [category, setCategory] = useState('Water');
   const [image, setImage] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number, lng: number, address: string }>({
+    lat: 28.6139, 
+    lng: 77.2090, 
+    address: 'Connaught Place, New Delhi, India'
+  });
+  
+  // UI states
   const { theme, language } = useTheme();
   const t = translations[language];
-  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  
+  // AI Analysis states
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<{
+    title: string;
+    category: string;
+    description: string;
+    confidence: number;
+  } | null>(null);
+  
+  // Location states
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showLocationMap, setShowLocationMap] = useState(false);
+  
+  // Report submission states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [submittedReportId, setSubmittedReportId] = useState('');
+  
+  // Categories supported by the app
+  const categories = ['Water', 'Electricity', 'Infrastructure', 'Sanitation', 'Roads', 'Others'];
 
   useEffect(() => {
     // Check if camera should be activated automatically
     if (cameraActive) {
-      activateCamera();
+      setTimeout(() => {
+        activateCamera();
+      }, 500); // Small delay to ensure component is fully mounted
     }
+    
+    // Try to get user's current location when component mounts
+    fetchCurrentLocation();
     
     // Clean up camera stream when component unmounts
     return () => {
@@ -36,17 +74,47 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
     };
   }, [cameraActive]);
 
+  const fetchCurrentLocation = async () => {
+    try {
+      setIsLoadingLocation(true);
+      const currentLocation = await getCurrentLocation();
+      setLocation(currentLocation);
+    } catch (error) {
+      console.error('Error fetching location:', error);
+      // Keep default location in case of error
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
   const activateCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
+      // First, stop any existing stream
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = { 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       setCameraStream(stream);
       setShowCamera(true);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => {
+            console.error("Error playing video:", e);
+          });
+        };
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -54,7 +122,7 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
     }
   };
 
-  const takePicture = () => {
+  const takePicture = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -76,37 +144,106 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
         }
         
         setShowCamera(false);
+        
+        // Analyze the image with AI
+        analyzeWithAI(dataUrl);
       }
     }
   };
-
-  const categories = ['Water', 'Roads', 'Infrastructure', 'Sanitation', 'Streetlights', 'Others'];
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImage(e.target?.result as string);
+        const imageData = e.target?.result as string;
+        setImage(imageData);
+        
+        // Analyze the uploaded image with AI
+        analyzeWithAI(imageData);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = () => {
-    // Mock submission
-    alert('Report submitted successfully! You will receive updates on the status.');
-    onNavigate('status');
+  const analyzeWithAI = async (imageData: string) => {
+    try {
+      setIsAnalyzing(true);
+      console.log("Starting image analysis with Cloud Vision API...");
+      
+      const result = await analyzeImage(imageData);
+      console.log("AI analysis result:", result);
+      
+      setAiResult(result);
+      
+      // Pre-fill the form with AI suggestions
+      setTitle(result.title);
+      setCategory(result.category);
+      setDescription(result.description);
+      
+      console.log("Form pre-filled with AI suggestions");
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      // Don't set the AI result if there's an error
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAcceptAI = () => {
+    // AI suggestions already applied to form, just acknowledge
+    // This could show a confirmation toast or animation
+    setAiResult(null); // Hide the AI component
+  };
+
+  const handleRejectAI = () => {
+    // Clear the AI suggestions
+    setAiResult(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!title || !description || !category) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Submit the report
+      const response = await submitReport(
+        title,
+        description,
+        category,
+        location,
+        image,
+        userId
+      );
+      
+      if (response.success) {
+        setSubmittedReportId(response.report_id);
+        setShowConfirmation(true);
+      }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      alert('Failed to submit report. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLocationChange = (newLocation: { lat: number, lng: number, address: string }) => {
+    setLocation(newLocation);
   };
 
   return (
-    <div>
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
-      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4`}>
+      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4 md:rounded-t-xl`}>
         <div className="flex items-center gap-4">
           <button
             onClick={() => onNavigate('home')}
-            className={`p-2 -ml-2 ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'} transition-colors`}
+            className={`p-2 ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'} transition-colors`}
           >
             <ArrowLeft size={24} />
           </button>
@@ -116,58 +253,7 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
 
       <div className="p-6 pb-24 max-w-2xl mx-auto">
         <form className="space-y-6">
-          {/* Title */}
-          <div>
-            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              {t.title}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="AI-assisted auto-suggest"
-                className={`w-full p-4 ${
-                  theme === 'dark' 
-                    ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
-                    : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
-                } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
-              />
-              <Sparkles className={`absolute right-4 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} size={20} />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              {t.briefDescription}
-            </label>
-            <div className="relative">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Text or voice input"
-                rows={4}
-                className={`w-full p-4 ${
-                  theme === 'dark' 
-                    ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
-                    : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
-                } border rounded-xl focus:ring-2 focus:border-transparent transition-all resize-none`}
-              />
-              <button
-                type="button"
-                className={`absolute bottom-4 right-4 p-2 ${
-                  theme === 'dark'
-                    ? 'text-blue-400 hover:bg-gray-700'
-                    : 'text-blue-600 hover:bg-blue-50'
-                } rounded-lg transition-colors`}
-              >
-                <Mic size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Image Upload */}
+          {/* Image Upload - Moved to top for better user flow */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -184,7 +270,7 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
                   }`}
                 >
                   <Camera size={16} />
-                  <span>Take Photo</span>
+                  <span>{t.takePhoto}</span>
                 </button>
               )}
             </div>
@@ -201,14 +287,31 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
                   }`}
                 />
                 <canvas ref={canvasRef} className="hidden" />
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={takePicture}
-                    className="bg-white text-gray-800 p-3 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
-                  >
-                    <div className="w-6 h-6 border-2 border-gray-800 rounded-full" />
-                  </button>
+                <div className="absolute inset-0 flex flex-col justify-between p-4">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (cameraStream) {
+                          cameraStream.getTracks().forEach(track => track.stop());
+                          setCameraStream(null);
+                        }
+                        setShowCamera(false);
+                      }}
+                      className="bg-gray-900/50 text-white p-2 rounded-full hover:bg-gray-900/70 transition-colors"
+                    >
+                      <span className="text-xl font-bold">×</span>
+                    </button>
+                  </div>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={takePicture}
+                      className="bg-white text-gray-800 p-4 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                    >
+                      <div className="w-6 h-6 border-2 border-gray-800 rounded-full" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : image ? (
@@ -220,7 +323,10 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => setImage(null)}
+                  onClick={() => {
+                    setImage(null);
+                    setAiResult(null);
+                  }}
                   className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
                 >
                   ×
@@ -245,32 +351,61 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
               </label>
             )}
           </div>
+          
+          {/* AI Analysis results */}
+          {(isAnalyzing || aiResult) && (
+            <AIAnalysis 
+              isAnalyzing={isAnalyzing}
+              result={aiResult}
+              onAccept={handleAcceptAI}
+              onReject={handleRejectAI}
+            />
+          )}
 
-          {/* Location */}
+          {/* Title */}
           <div>
             <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-              {t.location}
+              {t.title}
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t.title}
+              className={`w-full p-4 ${
+                theme === 'dark' 
+                  ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                  : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+              } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+              {t.briefDescription}
             </label>
             <div className="relative">
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t.briefDescription}
+                rows={4}
                 className={`w-full p-4 ${
                   theme === 'dark' 
                     ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
                     : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
-                } border rounded-xl focus:ring-2 focus:border-transparent transition-all pr-12`}
+                } border rounded-xl focus:ring-2 focus:border-transparent transition-all resize-none`}
               />
               <button
                 type="button"
-                className={`absolute right-4 top-1/2 transform -translate-y-1/2 ${
+                className={`absolute bottom-4 right-4 p-2 ${
                   theme === 'dark'
                     ? 'text-blue-400 hover:bg-gray-700'
                     : 'text-blue-600 hover:bg-blue-50'
-                } p-2 rounded-lg transition-colors`}
+                } rounded-lg transition-colors`}
               >
-                <Search size={20} />
+                <Mic size={20} />
               </button>
             </div>
           </div>
@@ -297,20 +432,88 @@ function ReportPage({ onNavigate, cameraActive = false }: ReportPageProps) {
             </select>
           </div>
 
+          {/* Location */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                {t.location}
+              </label>
+              <button
+                type="button"
+                onClick={fetchCurrentLocation}
+                className={`flex items-center gap-1 text-sm ${
+                  theme === 'dark' 
+                    ? 'text-blue-400 hover:text-blue-300' 
+                    : 'text-blue-600 hover:text-blue-500'
+                } ${isLoadingLocation ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isLoadingLocation}
+              >
+                {isLoadingLocation ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <MapPin size={16} />
+                )}
+                <span>{t.useLocation}</span>
+              </button>
+            </div>
+            
+            {/* Location Map */}
+            <div 
+              onClick={() => setShowLocationMap(!showLocationMap)}
+              className="mb-2 cursor-pointer"
+            >
+              <LocationMap 
+                location={location} 
+                onLocationChange={handleLocationChange} 
+                editable={showLocationMap}
+              />
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLocationMap(!showLocationMap)}
+                className={`text-sm ${
+                  theme === 'dark' 
+                    ? 'text-blue-400 hover:text-blue-300' 
+                    : 'text-blue-600 hover:text-blue-500'
+                }`}
+              >
+                {showLocationMap ? t.confirmSubmit : t.changeLocation}
+              </button>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <button
             type="button"
             onClick={handleSubmit}
+            disabled={isSubmitting || !title || !description || !category}
             className={`w-full ${
               theme === 'dark'
                 ? 'bg-blue-700 hover:bg-blue-800'
                 : 'bg-blue-600 hover:bg-blue-700'
-            } text-white py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg`}
+            } ${(isSubmitting || !title || !description || !category) ? 'opacity-60 cursor-not-allowed' : ''} text-white py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg flex items-center justify-center gap-2`}
           >
-            {t.submitReport}
+            {isSubmitting && <Loader2 size={20} className="animate-spin" />}
+            {isSubmitting ? t.processingImage : t.submitReport}
           </button>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      <ReportConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => {
+          setShowConfirmation(false);
+          onNavigate('home');
+        }}
+        reportId={submittedReportId}
+        onViewStatus={() => {
+          setShowConfirmation(false);
+          onNavigate('status');
+        }}
+      />
     </div>
   );
 }

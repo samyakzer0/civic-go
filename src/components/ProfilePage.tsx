@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Edit3, ChevronRight, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit3, ChevronRight, LogOut, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations, languages } from '../utils/translations';
+import { isAdmin, isCategoryAdmin } from '../services/supabase';
 import LanguageModal from './LanguageModal';
 import ThemeModal from './ThemeModal';
 
@@ -16,12 +17,35 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [hasCategoryAccess, setHasCategoryAccess] = useState(false);
   const { theme, language } = useTheme();
   const t = translations[language];
+  
+  useEffect(() => {
+    // Check if user has admin privileges
+    const checkAdminStatus = async () => {
+      try {
+        const adminStatus = await isAdmin();
+        // For development purposes, always show admin panel
+        setIsAdminUser(true); // Set to true for development
+        
+        // Check if user is an admin for any category
+        const hasCategories = await isCategoryAdmin('Water'); // Check at least one category
+        setHasCategoryAccess(true); // Set to true for development
+        
+        console.log("Admin status check:", { isAdmin: adminStatus, hasCategories });
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    
+    checkAdminStatus();
+  }, []);
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center px-6">
           <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.signInRequired}</h2>
           <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-8`}>
@@ -39,25 +63,16 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
-      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4`}>
+      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4 md:rounded-t-xl`}>
         <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} text-center`}>{t.profile}</h1>
       </div>
 
       <div className="p-6 pb-24">
         {/* Profile Info */}
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-            : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-        } rounded-xl p-6 shadow-lg border mb-6 relative overflow-hidden group hover:shadow-xl transition-all`}>
-          {/* Glass effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-30"></div>
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity"></div>
-          <div className="absolute -inset-1 opacity-0 group-hover:opacity-40 group-hover:animate-shimmer bg-[length:500%_100%] bg-gradient-to-r from-transparent via-white to-transparent transition-opacity"></div>
-          
-          <div className="flex flex-col items-center text-center relative">
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl p-6 shadow-sm border mb-6`}>
+          <div className="flex flex-col items-center text-center">
             <div className="relative mb-4">
               <img
                 src={user.avatar}
@@ -74,53 +89,32 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
         </div>
 
         {/* Personal Information */}
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-            : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-        } rounded-xl p-6 shadow-lg border mb-6 relative overflow-hidden group hover:shadow-xl transition-all`}>
-          {/* Glass effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-30"></div>
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity"></div>
-          <div className="absolute -inset-1 opacity-0 group-hover:opacity-40 group-hover:animate-shimmer bg-[length:500%_100%] bg-gradient-to-r from-transparent via-white to-transparent transition-opacity"></div>
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl p-6 shadow-sm border mb-6`}>
+          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.personalInformation}</h3>
           
-          <div className="relative">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.personalInformation}</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-2">
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.email}</span>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.email}</span>
+            </div>
             
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2">
-                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.email}</span>
-                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.email}</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-2">
-                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.phone}</span>
-                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.phone}</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-2">
-                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.password}</span>
-                <button className={`${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors`}>
-                  {t.change}
-                </button>
-              </div>
+            <div className="flex justify-between items-center py-2">
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.phone}</span>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.phone}</span>
+            </div>
+            
+            <div className="flex justify-between items-center py-2">
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.password}</span>
+              <button className={`${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors`}>
+                {t.change}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Notification Preferences */}
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-            : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-        } rounded-xl p-6 shadow-lg border mb-6 relative overflow-hidden group hover:shadow-xl transition-all`}>
-          {/* Glass effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-teal-500/5 opacity-30"></div>
-          <div className="absolute -inset-1 bg-gradient-to-r from-green-500/10 to-teal-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity"></div>
-          <div className="absolute -inset-1 opacity-0 group-hover:opacity-40 group-hover:animate-shimmer bg-[length:500%_100%] bg-gradient-to-r from-transparent via-white to-transparent transition-opacity"></div>
-          
-          <div className="relative">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.notificationPreferences}</h3>
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl p-6 shadow-sm border mb-6`}>
+          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.notificationPreferences}</h3>
           
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -159,22 +153,11 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
               </button>
             </div>
           </div>
-          </div>
         </div>
 
         {/* App Settings */}
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-            : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-        } rounded-xl p-6 shadow-lg border mb-6 relative overflow-hidden group hover:shadow-xl transition-all`}>
-          {/* Glass effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-30"></div>
-          <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity"></div>
-          <div className="absolute -inset-1 opacity-0 group-hover:opacity-40 group-hover:animate-shimmer bg-[length:500%_100%] bg-gradient-to-r from-transparent via-white to-transparent transition-opacity"></div>
-          
-          <div className="relative">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.appSettings}</h3>
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl p-6 shadow-sm border mb-6`}>
+          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.appSettings}</h3>
           
           <div className="space-y-4">
             <button 
@@ -206,21 +189,30 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
               <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{t.aboutCivicGo}</span>
               <ChevronRight size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} />
             </button>
-          </div>
+            
+            {(isAdminUser || hasCategoryAccess) && (
+              <button 
+                onClick={() => onNavigate('admin')}
+                className="flex justify-between items-center w-full py-2 text-left"
+              >
+                <span className={`flex items-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <ShieldAlert size={16} className="mr-2 text-amber-500" />
+                  Admin Panel
+                </span>
+                <ChevronRight size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Logout Button */}
-        <div className="relative overflow-hidden group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-red-500/20 to-rose-500/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <button
-            onClick={onSignOut}
-            className="w-full bg-gradient-to-r from-red-500 to-rose-500 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all shadow-lg flex items-center justify-center gap-3 relative z-10"
-          >
-            <LogOut size={20} />
-            {t.logout}
-          </button>
-        </div>
+        <button
+          onClick={onSignOut}
+          className="w-full bg-red-500 text-white py-4 rounded-xl font-semibold text-lg hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-3"
+        >
+          <LogOut size={20} />
+          {t.logout}
+        </button>
       </div>
 
       {/* Language Modal */}

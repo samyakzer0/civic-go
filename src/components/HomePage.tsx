@@ -14,7 +14,11 @@ function HomePage({ onNavigate }: HomePageProps) {
   const t = translations[language];
   
   return (
-    <div>
+    <div className={`min-h-screen ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-b from-amber-50 via-green-50 to-blue-50'
+    }`}>
       {/* Header */}
       <div className="flex justify-between items-center p-6">
         <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>CivicGo</h1>
@@ -167,7 +171,7 @@ function HomePage({ onNavigate }: HomePageProps) {
         <div className="flex justify-between items-center mb-4">
           <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{t.yourReports}</h3>
           <button 
-            onClick={() => onNavigate('reports')}
+            onClick={() => onNavigate('status')}
             className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
           >
             {t.seeAll}

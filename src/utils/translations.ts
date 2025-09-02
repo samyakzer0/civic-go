@@ -1,3 +1,5 @@
+// All translation keys used in the application
+// When adding a new key, add it here and in the English translations object
 type TranslationKeys =
   | 'welcome'
   | 'signInWithGoogle'
@@ -45,10 +47,28 @@ type TranslationKeys =
   | 'change'
   | 'welcomeToCity'
   | 'yourReports'
-  | 'seeAll';
+  | 'seeAll'
+  | 'analyzing'
+  | 'aiDetected'
+  | 'reportSubmitted'
+  | 'yourReferenceNumber'
+  | 'statusUpdateNotification'
+  | 'viewStatus'
+  | 'close'
+  | 'takePhoto'
+  | 'useLocation'
+  | 'currentLocation'
+  | 'changeLocation'
+  | 'previewReport'
+  | 'confirmSubmit'
+  | 'processingImage'
+  | 'clickToAdjustLocation'
+  | 'adminPanel'
+  | 'adminLogin'
+  | 'categoryAdmin';
 
 type Translations = {
-  [key in TranslationKeys]: string;
+  [key: string]: string; // Allow any string key for flexibility
 };
 
 type LanguageMap = {
@@ -103,7 +123,25 @@ const translations: LanguageMap = {
     change: 'Change',
     welcomeToCity: 'Your voice for a better community. Report issues, track progress, and help make your neighborhood a better place.',
     yourReports: 'Your Reports',
-    seeAll: 'See All'
+    seeAll: 'See All',
+    analyzing: 'Analyzing image...',
+    aiDetected: 'AI detected the following:',
+    reportSubmitted: 'Report Submitted Successfully!',
+    yourReferenceNumber: 'Your reference number is:',
+    statusUpdateNotification: 'You will receive notifications when your report status changes.',
+    viewStatus: 'View Status',
+    close: 'Close',
+    takePhoto: 'Take Photo',
+    useLocation: 'Use Current Location',
+    currentLocation: 'Current Location',
+    changeLocation: 'Change Location',
+    previewReport: 'Preview Report',
+    confirmSubmit: 'Confirm & Submit',
+    processingImage: 'Processing image...',
+    clickToAdjustLocation: 'Click to adjust location',
+    adminPanel: 'Admin Panel',
+    adminLogin: 'Admin Login',
+    categoryAdmin: 'Category Management'
   },
   hi: {
     welcome: 'सिविकगो में आपका स्वागत है',
@@ -152,7 +190,22 @@ const translations: LanguageMap = {
     change: 'बदलें',
     welcomeToCity: 'एक बेहतर समुदाय के लिए आपकी आवाज़। समस्याओं की रिपोर्ट करें, प्रगति को ट्रैक करें, और अपने पड़ोस को बेहतर बनाने में मदद करें।',
     yourReports: 'आपकी रिपोर्ट',
-    seeAll: 'सभी देखें'
+    seeAll: 'सभी देखें',
+    analyzing: 'छवि का विश्लेषण किया जा रहा है...',
+    aiDetected: 'AI ने निम्नलिखित का पता लगाया:',
+    reportSubmitted: 'रिपोर्ट सफलतापूर्वक सबमिट की गई!',
+    yourReferenceNumber: 'आपका संदर्भ संख्या है:',
+    statusUpdateNotification: 'जब आपकी रिपोर्ट की स्थिति बदलेगी, तब आपको सूचनाएं प्राप्त होंगी।',
+    viewStatus: 'स्थिति देखें',
+    close: 'बंद करें',
+    takePhoto: 'फोटो लें',
+    useLocation: 'वर्तमान स्थान का उपयोग करें',
+    currentLocation: 'वर्तमान स्थान',
+    changeLocation: 'स्थान बदलें',
+    previewReport: 'रिपोर्ट का पूर्वावलोकन करें',
+    confirmSubmit: 'पुष्टि करें और सबमिट करें',
+    processingImage: 'छवि संसाधित की जा रही है...',
+    clickToAdjustLocation: 'स्थान समायोजित करने के लिए क्लिक करें'
   },
   te: {
     welcome: 'సివిక్‌గో కి స్వాగతం',
@@ -397,9 +450,39 @@ const translations: LanguageMap = {
     change: 'পরিবর্তন করুন',
     welcomeToCity: 'একটি উন্নত কমিউনিটির জন্য আপনার কণ্ঠস্বর। সমস্যা রিপোর্ট করুন, অগ্রগতি ট্র্যাক করুন, এবং আপনার আশপাশকে আরও ভালো করতে সাহায্য করুন।',
     yourReports: 'আপনার রিপোর্টগুলি',
-    seeAll: 'সবগুলি দেখুন'
+    seeAll: 'সবগুলি দেখুন',
+    analyzing: 'ছবি বিশ্লেষণ করা হচ্ছে...',
+    aiDetected: 'AI নিম্নলিখিত সনাক্ত করেছে:',
+    reportSubmitted: 'রিপোর্ট সফলভাবে জমা দেওয়া হয়েছে!',
+    yourReferenceNumber: 'আপনার রেফারেন্স নম্বর হল:',
+    statusUpdateNotification: 'আপনার রিপোর্টের স্থিতি পরিবর্তন হলে আপনি বিজ্ঞপ্তি পাবেন।',
+    viewStatus: 'স্টেটাস দেখুন',
+    close: 'বন্ধ করুন',
+    takePhoto: 'ছবি তুলুন',
+    useLocation: 'বর্তমান অবস্থান ব্যবহার করুন',
+    currentLocation: 'বর্তমান অবস্থান',
+    changeLocation: 'অবস্থান পরিবর্তন করুন',
+    previewReport: 'রিপোর্ট প্রিভিউ করুন',
+    confirmSubmit: 'নিশ্চিত করুন এবং জমা দিন',
+    processingImage: 'ছবি প্রক্রিয়া করা হচ্ছে...',
+    clickToAdjustLocation: 'অবস্থান সামঞ্জস্য করতে ক্লিক করুন'
   }
 };
+
+// Make sure all languages have the same keys as English
+// Use English translations as fallback for missing keys
+Object.keys(translations).forEach(lang => {
+  if (lang !== 'en') {
+    // For each language other than English
+    Object.keys(translations.en).forEach(key => {
+      // Check if translation exists
+      if (!(key in translations[lang])) {
+        // Use English as fallback for missing keys
+        translations[lang][key] = translations.en[key];
+      }
+    });
+  }
+});
 
 const languages = {
   en: 'English',
