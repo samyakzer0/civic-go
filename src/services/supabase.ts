@@ -26,19 +26,10 @@ export const signInWithEmail = async (email: string, password: string) => {
 };
 
 export const signInWithGoogle = async () => {
-  // Get the current URL's origin (this will be different in dev vs production)
-  const currentOrigin = window.location.origin;
-  console.log(`Signing in with Google, redirect URL: ${currentOrigin}`);
-  
-  // Make sure to override any configured redirects with our actual current URL
   return await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: currentOrigin, // This ensures we redirect back to the correct URL
-      queryParams: {
-        // Force the redirect_to parameter to ensure it overrides any dashboard settings
-        redirect_to: currentOrigin
-      }
+      redirectTo: window.location.origin,
     }
   });
 };
