@@ -177,8 +177,13 @@ export const submitReport = async (
       user_id: userId
     };
 
-    // Insert into Supabase if configured
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    // Insert into Supabase if configured - check both Vite's import.meta.env and our process.env fallback
+    const hasSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL);
+    const hasSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY);
+      
+    if (hasSupabaseUrl && hasSupabaseKey) {
       console.log('Submitting report to Supabase:', reportData.report_id);
       const { error } = await supabase
         .from('reports')
@@ -221,8 +226,13 @@ export const submitReport = async (
 // Get all reports for the current user
 export const getUserReports = async (userId: string = 'anon_user'): Promise<ReportData[]> => {
   try {
-    // Try to get from Supabase first
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    // Try to get from Supabase first - check both Vite's import.meta.env and our process.env fallback
+    const hasSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL);
+    const hasSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY);
+      
+    if (hasSupabaseUrl && hasSupabaseKey) {
       console.log(`Fetching reports for user: ${userId} from Supabase`);
       const { data, error } = await supabase
         .from('reports')
@@ -265,8 +275,13 @@ export const getUserReports = async (userId: string = 'anon_user'): Promise<Repo
 // Get all reports for admin by category
 export const getReportsByCategory = async (category: string): Promise<ReportData[]> => {
   try {
-    // Try to get from Supabase first
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    // Try to get from Supabase first - check both Vite's import.meta.env and our process.env fallback
+    const hasSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL);
+    const hasSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+      (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY);
+      
+    if (hasSupabaseUrl && hasSupabaseKey) {
       console.log(`Fetching reports for category: ${category} from Supabase`);
       const { data, error } = await supabase
         .from('reports')

@@ -1,10 +1,25 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Get environment variables with fallbacks for development
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xxhdyvsiabdwvzkyhboi.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4aGR5dnNpYWJkd3Z6a3loYm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4Mzk3MzksImV4cCI6MjA3MjQxNTczOX0.fsqxe4tlMU276QPPb7KY-KUTYSTFDhTsPNtFIIk7Mu0';
+// Try both import.meta.env (Vite standard) and process.env (our custom define)
+const supabaseUrl = 
+  import.meta.env.VITE_SUPABASE_URL || 
+  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) || 
+  'https://xxhdyvsiabdwvzkyhboi.supabase.co';
 
-if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+const supabaseAnonKey = 
+  import.meta.env.VITE_SUPABASE_ANON_KEY || 
+  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) || 
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4aGR5dnNpYWJkd3Z6a3loYm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4Mzk3MzksImV4cCI6MjA3MjQxNTczOX0.fsqxe4tlMU276QPPb7KY-KUTYSTFDhTsPNtFIIk7Mu0';
+
+// Debug info to help troubleshoot environment variable loading
+console.log('Supabase URL from import.meta.env:', import.meta.env.VITE_SUPABASE_URL ? 'Found' : 'Not found');
+console.log('Supabase URL from process.env:', 
+  typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL ? 'Found' : 'Not found');
+
+if (!supabaseUrl.includes('xxhdyvsiabdwvzkyhboi.supabase.co')) {
+  console.log('Using environment variables for Supabase configuration');
+} else {
   console.warn('Environment variables not loaded from .env file. Using hardcoded fallbacks.');
   console.warn('Please check that your .env file exists and is being loaded correctly by Vite.');
 }
