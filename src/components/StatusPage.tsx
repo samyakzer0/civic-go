@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, MapPin, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import { getUserReports, ReportData } from '../services/ReportService';
@@ -26,13 +26,14 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
     loadReports();
   }, [userId]);
   
-  const loadReports = () => {
+  const loadReports = async () => {
     setIsLoading(true);
     
     try {
       // In a real implementation, we would fetch from an API
       // For prototype, we're using the service that stores data in localStorage
-      const userReports = getUserReports(userId);
+      const userReports = await getUserReports(userId);
+      console.log('Fetched reports:', userReports);
       
       // Sort reports by created date (newest first)
       const sortedReports = [...userReports].sort(
@@ -48,7 +49,7 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
   };
   
   const filteredReports = filter && filter !== 'All' 
-    ? reports.filter(report => report.category === filter)
+    ? reports.filter(report => report.category.toLowerCase() === filter.toLowerCase())
     : reports;
     
   // Format relative time (e.g., "2 hours ago")

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getReportsByCategory, updateReportStatus, ReportData } from '../../services/ReportService';
 import { 
@@ -43,7 +43,9 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   const loadReports = async () => {
     try {
       setIsLoading(true);
+      // Case-insensitive match for the category
       const categoryReports = await getReportsByCategory(category);
+      console.log(`Fetched ${categoryReports.length} reports for category ${category}:`, categoryReports);
       setReports(categoryReports);
     } catch (error) {
       console.error(`Error loading ${category} reports:`, error);

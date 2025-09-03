@@ -38,7 +38,11 @@ export const generateReferenceNumber = (category: string): string => {
     'Others': 'OT'
   };
 
-  const prefix = categoryPrefixes[category] || 'OT';
+  // Make case-insensitive lookup
+  const normalizedCategory = Object.keys(categoryPrefixes).find(
+    key => key.toLowerCase() === category.toLowerCase()
+  ) || category;
+  const prefix = categoryPrefixes[normalizedCategory] || 'OT';
   const date = new Date();
   const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
   const randomNum = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
@@ -66,7 +70,7 @@ const uploadImage = async (imageData: string, reportId: string): Promise<string>
     
     // Upload to Supabase Storage
     const fileName = `${reportId}-${Date.now()}.jpg`;
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('report-images')
       .upload(`public/${fileName}`, blob);
     
@@ -154,11 +158,17 @@ export const submitReport = async (
       imageUrl = await uploadImage(imageData, reportId);
     }
 
+    // Standardize category case to match our defined categories
+    const standardCategories = ['Water', 'Electricity', 'Infrastructure', 'Sanitation', 'Roads', 'Streetlights', 'Others'];
+    const normalizedCategory = standardCategories.find(
+      c => c.toLowerCase() === category.toLowerCase()
+    ) || category;
+    
     const reportData = {
       report_id: reportId,
       title,
       description,
-      category,
+      category: normalizedCategory, // Use the normalized category with proper case
       location,
       image_url: imageUrl,
       status: 'Submitted',
@@ -167,22 +177,33 @@ export const submitReport = async (
       user_id: userId
     };
 
-    // Insert into Supabase
-    const { data, error } = await supabase
-      .from('reports')
-      .insert([reportData])
-      .select();
+    // Insert into Supabase if configured
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.log('Submitting report to Supabase:', reportData.report_id);
+      const { error } = await supabase
+        .from('reports')
+        .insert([reportData])
+        .select();
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      throw new Error(`Failed to submit report: ${error.message}`);
+      if (error) {
+        console.error('Supabase insert error:', error);
+        // Don't throw - continue with localStorage fallback
+      } else {
+        console.log('Report successfully submitted to Supabase');
+      }
+    } else {
+      console.log('Supabase not configured, using localStorage only');
     }
     
-    // Fallback to local storage if Supabase is not configured yet
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    // Always save to localStorage for backup and local development
+    try {
       const existingReports = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+      console.log(`Found ${existingReports.length} existing reports in localStorage`);
       existingReports.push(reportData);
       localStorage.setItem('civicgo_reports', JSON.stringify(existingReports));
+      console.log(`Report ${reportData.report_id} saved to localStorage`);
+    } catch (e) {
+      console.error('Error saving to localStorage:', e);
     }
 
     // Return response
@@ -202,19 +223,31 @@ export const getUserReports = async (userId: string = 'anon_user'): Promise<Repo
   try {
     // Try to get from Supabase first
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.log(`Fetching reports for user: ${userId} from Supabase`);
       const { data, error } = await supabase
         .from('reports')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} reports in Supabase`);
       return data as ReportData[];
+    } else {
+      console.log('Supabase credentials not found, using localStorage');
     }
     
     // Fallback to localStorage
-    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-    return allReports.filter(report => report.user_id === userId);
+    const storageData = localStorage.getItem('civicgo_reports');
+    console.log(`LocalStorage data exists: ${!!storageData}`);
+    const allReports: ReportData[] = JSON.parse(storageData || '[]');
+    const filteredReports = allReports.filter(report => report.user_id === userId);
+    console.log(`Found ${filteredReports.length} reports in localStorage for user ${userId}`);
+    return filteredReports;
   } catch (error) {
     console.error('Error fetching user reports:', error);
     
@@ -222,7 +255,8 @@ export const getUserReports = async (userId: string = 'anon_user'): Promise<Repo
     try {
       const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
       return allReports.filter(report => report.user_id === userId);
-    } catch {
+    } catch (e) {
+      console.error('Failed to parse localStorage data:', e);
       return [];
     }
   }
@@ -233,27 +267,44 @@ export const getReportsByCategory = async (category: string): Promise<ReportData
   try {
     // Try to get from Supabase first
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.log(`Fetching reports for category: ${category} from Supabase`);
       const { data, error } = await supabase
         .from('reports')
         .select('*')
-        .eq('category', category)
+        .ilike('category', category) // Case-insensitive match
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} reports for category ${category} in Supabase`);
       return data as ReportData[];
+    } else {
+      console.log('Supabase credentials not found, using localStorage');
     }
     
-    // Fallback to localStorage
-    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-    return allReports.filter(report => report.category === category);
+    // Fallback to localStorage with case-insensitive comparison
+    const storageData = localStorage.getItem('civicgo_reports');
+    console.log(`LocalStorage data exists: ${!!storageData}`);
+    const allReports: ReportData[] = JSON.parse(storageData || '[]');
+    const filteredReports = allReports.filter(report => 
+      report.category.toLowerCase() === category.toLowerCase()
+    );
+    console.log(`Found ${filteredReports.length} reports in localStorage for category ${category}`);
+    return filteredReports;
   } catch (error) {
     console.error('Error fetching category reports:', error);
     
     // Final fallback
     try {
       const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-      return allReports.filter(report => report.category === category);
-    } catch {
+      return allReports.filter(report => 
+        report.category.toLowerCase() === category.toLowerCase()
+      );
+    } catch (e) {
+      console.error('Failed to parse localStorage data:', e);
       return [];
     }
   }
