@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Plus, FileText, User, ShieldAlert } from 'lucide-react';
+import { Home, Plus, FileText, User, ShieldAlert, Bug } from 'lucide-react';
 import HomePage from './components/HomePage';
 import ReportPage from './components/ReportPage';
 import StatusPage from './components/StatusPage';
@@ -7,11 +7,13 @@ import ProfilePage from './components/ProfilePage';
 import WelcomePage from './components/WelcomePage';
 import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
+import AuthDebugPage from './components/AuthDebugPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { translations } from './utils/translations';
-import { getCurrentUser, signInWithGoogle } from './services/supabase.ts';
+import { signInWithGoogle, supabase } from './services/supabase.ts';
+import { initAuth } from './services/auth-helper';
 
-type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin';
+type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'debug';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
@@ -23,11 +25,14 @@ function AppContent() {
   const t = translations[language];
   
   useEffect(() => {
-    // Check if user is already signed in
+    // Check if user is already signed in or handling an OAuth redirect
     const checkAuth = async () => {
       try {
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
+        // This will handle both OAuth redirects and existing sessions
+        const session = await initAuth();
+        
+        if (session) {
+          const currentUser = session.user;
           setIsSignedIn(true);
           setUser({
             name: currentUser.user_metadata?.full_name || 'User',
@@ -46,6 +51,33 @@ function AppContent() {
     };
     
     checkAuth();
+    
+    // Set up auth state listener for changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`Supabase auth event: ${event}`);
+      
+      if (event === 'SIGNED_IN' && session) {
+        const currentUser = session.user;
+        setIsSignedIn(true);
+        setUser({
+          name: currentUser.user_metadata?.full_name || 'User',
+          email: currentUser.email,
+          phone: currentUser.phone || '',
+          joinedYear: new Date(currentUser.created_at).getFullYear().toString(),
+          avatar: currentUser.user_metadata?.avatar_url || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
+        });
+        setCurrentPage('home');
+      } else if (event === 'SIGNED_OUT') {
+        setIsSignedIn(false);
+        setUser(null);
+        setCurrentPage('welcome');
+      }
+    });
+    
+    // Clean up the listener
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const handleNavigate = (page: string) => {
@@ -68,7 +100,7 @@ function AppContent() {
   const handleSignIn = async (provider: string) => {
     if (provider === 'google') {
       try {
-        const { data, error } = await signInWithGoogle();
+        const { error } = await signInWithGoogle();
         if (error) {
           console.error("Google Sign-In Error:", error);
           return;
@@ -100,10 +132,17 @@ function AppContent() {
     setCurrentPage('home');
   };
 
-  const handleSignOut = () => {
-    setIsSignedIn(false);
-    setUser(null);
-    setCurrentPage('welcome');
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      // The auth state listener will handle updating the UI
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Fallback in case the listener doesn't work
+      setIsSignedIn(false);
+      setUser(null);
+      setCurrentPage('welcome');
+    }
   };
 
   const renderPage = () => {
@@ -144,6 +183,8 @@ function AppContent() {
         return <AboutPage onNavigate={handleNavigate} />;
       case 'admin':
         return <AdminPage />;
+      case 'debug':
+        return <AuthDebugPage onNavigate={handleNavigate} />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
@@ -218,6 +259,19 @@ function AppContent() {
               >
                 <ShieldAlert size={24} />
                 <span className="text-xs mt-1">Admin</span>
+              </button>
+              
+              {/* Debug mode for auth issues */}
+              <button
+                onClick={() => setCurrentPage('debug')}
+                className={`flex flex-col items-center py-2 px-1 transition-colors ${
+                  currentPage === 'debug' 
+                    ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
+                    : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`}
+              >
+                <Bug size={24} />
+                <span className="text-xs mt-1">Debug</span>
               </button>
             </div>
           </nav>
