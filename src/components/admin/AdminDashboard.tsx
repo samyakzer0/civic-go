@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCurrentUser, signOut, getUserAdminCategories } from '../../services/supabase';
+import { getCurrentUser, signOut, getUserAdminCategories } from '../../services/supabase.ts';
 import { useTheme } from '../../contexts/ThemeContext';
 import CategoryAdmin from './CategoryAdmin';
 

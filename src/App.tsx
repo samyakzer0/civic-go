@@ -9,7 +9,7 @@ import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { translations } from './utils/translations';
-import { getCurrentUser, signInWithGoogle } from './services/supabase';
+import { getCurrentUser, signInWithGoogle } from './services/supabase.ts';
 
 type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithEmail } from '../../services/supabase';
+import { signInWithEmail } from '../../services/supabase.ts';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface AdminLoginProps {

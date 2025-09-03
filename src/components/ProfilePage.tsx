@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Edit3, ChevronRight, LogOut, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations, languages } from '../utils/translations';
-import { isAdmin, isCategoryAdmin } from '../services/supabase';
+import { isAdmin, isCategoryAdmin } from '../services/supabase.ts';
 import LanguageModal from './LanguageModal';
 import ThemeModal from './ThemeModal';
 

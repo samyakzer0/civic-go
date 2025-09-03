@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 // Report data model

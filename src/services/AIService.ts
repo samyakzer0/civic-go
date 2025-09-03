@@ -39,7 +39,7 @@ async function loadModel() {
 }
 
 // Class names for MobileNet (ImageNet labels)
-const IMAGENET_CLASSES: string[] = require('./imagenet_classes').IMAGENET_CLASSES;
+import { IMAGENET_CLASSES } from './imagenet_classes.js';
 
 // Using TensorFlow.js to run inference locally in the browser
 export const analyzeImage = async (imageData: string): Promise<AIAnalysisResult> => {
