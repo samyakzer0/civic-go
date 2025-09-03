@@ -98,10 +98,12 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
               <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.email}</span>
             </div>
             
-            <div className="flex justify-between items-center py-2">
-              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.phone}</span>
-              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.phone}</span>
-            </div>
+            {user.phone && (
+              <div className="flex justify-between items-center py-2">
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.phone}</span>
+                <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.phone}</span>
+              </div>
+            )}
             
             <div className="flex justify-between items-center py-2">
               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.password}</span>

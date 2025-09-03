@@ -9,7 +9,7 @@ import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { translations } from './utils/translations';
-import { getCurrentUser, signInWithGoogle } from './services/supabase.ts';
+import { getCurrentUser, signInWithGoogle, isAdmin } from './services/supabase.ts';
 
 type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin';
 
@@ -19,6 +19,7 @@ function AppContent() {
   const [user, setUser] = useState<any>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
   const { theme, language } = useTheme();
   const t = translations[language];
   
@@ -36,6 +37,11 @@ function AppContent() {
             joinedYear: new Date(currentUser.created_at).getFullYear().toString(),
             avatar: currentUser.user_metadata?.avatar_url || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
           });
+          
+          // Check if user is an admin
+          const adminStatus = await isAdmin();
+          setIsUserAdmin(adminStatus);
+          
           setCurrentPage('home');
         }
       } catch (error) {
@@ -68,7 +74,7 @@ function AppContent() {
   const handleSignIn = async (provider: string) => {
     if (provider === 'google') {
       try {
-        const { data, error } = await signInWithGoogle();
+        const { error } = await signInWithGoogle();
         if (error) {
           console.error("Google Sign-In Error:", error);
           return;
@@ -207,18 +213,20 @@ function AppContent() {
                 <span className="text-xs mt-1">{t.profile}</span>
               </button>
               
-              {/* Developer mode: Direct admin access */}
-              <button
-                onClick={() => setCurrentPage('admin')}
-                className={`flex flex-col items-center py-2 px-1 transition-colors ${
-                  currentPage === 'admin' 
-                    ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
-                    : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}
-              >
-                <ShieldAlert size={24} />
-                <span className="text-xs mt-1">Admin</span>
-              </button>
+              {/* Only show Admin tab for admin users */}
+              {isUserAdmin && (
+                <button
+                  onClick={() => setCurrentPage('admin')}
+                  className={`flex flex-col items-center py-2 px-1 transition-colors ${
+                    currentPage === 'admin' 
+                      ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
+                      : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  }`}
+                >
+                  <ShieldAlert size={24} />
+                  <span className="text-xs mt-1">Admin</span>
+                </button>
+              )}
             </div>
           </nav>
         )}

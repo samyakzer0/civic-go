@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getReportsByCategory, updateReportStatus, ReportData } from '../../services/ReportService';
+import { 
+  getReportsByCategory, 
+  updateReportStatus, 
+  deleteReport, 
+  updateReportDetails,
+  ReportData 
+} from '../../services/ReportService';
 import { 
   ArrowDown, 
   ArrowUp, 
@@ -10,7 +16,10 @@ import {
   Filter, 
   RefreshCw, 
   Search, 
-  Send 
+  Send,
+  Edit,
+  Trash2,
+  XCircle
 } from 'lucide-react';
 
 interface CategoryAdminProps {
@@ -29,6 +38,11 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCity, setEditCity] = useState('');
 
   // Load reports on mount and when category changes
   useEffect(() => {
@@ -76,7 +90,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
     
     // Apply sorting
     filtered.sort((a, b) => {
-      let valA, valB;
+      let valA: any, valB: any;
       
       if (sortBy === 'created_at') {
         valA = new Date(a.created_at).getTime();
@@ -87,9 +101,12 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       } else if (sortBy === 'title') {
         valA = a.title.toLowerCase();
         valB = b.title.toLowerCase();
+      } else if (sortBy === 'city') {
+        valA = (a.city || '').toLowerCase();
+        valB = (b.city || '').toLowerCase();
       } else {
-        valA = a[sortBy as keyof ReportData];
-        valB = b[sortBy as keyof ReportData];
+        valA = a[sortBy as keyof ReportData] || '';
+        valB = b[sortBy as keyof ReportData] || '';
       }
       
       if (sortOrder === 'asc') {
@@ -145,6 +162,100 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       }
     } catch (error) {
       console.error('Error updating report status:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const handleDeleteReport = async (reportId: string) => {
+    try {
+      setIsDeleting(true);
+      const confirmed = window.confirm("Are you sure you want to delete this report? This action cannot be undone.");
+      
+      if (!confirmed) {
+        setIsDeleting(false);
+        return;
+      }
+      
+      const success = await deleteReport(reportId);
+      
+      if (success) {
+        // Remove the report from the state
+        const updatedReports = reports.filter(report => report.report_id !== reportId);
+        setReports(updatedReports);
+        
+        // If we're viewing the deleted report, go back to the list
+        if (selectedReport && selectedReport.report_id === reportId) {
+          setSelectedReport(null);
+        }
+        
+        setUpdateSuccess(true);
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error deleting report:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  const startEditing = (report: ReportData) => {
+    setIsEditing(true);
+    setEditTitle(report.title);
+    setEditDescription(report.description);
+    setEditCity(report.city || '');
+  };
+  
+  const cancelEditing = () => {
+    setIsEditing(false);
+  };
+  
+  const saveEditedReport = async (reportId: string) => {
+    try {
+      setIsUpdating(true);
+      
+      const updates = {
+        title: editTitle,
+        description: editDescription,
+        city: editCity
+      };
+      
+      const success = await updateReportDetails(reportId, updates);
+      
+      if (success) {
+        // Update the report in the current state
+        const updatedReports = reports.map(report => {
+          if (report.report_id === reportId) {
+            return {
+              ...report,
+              title: editTitle,
+              description: editDescription,
+              city: editCity,
+              updated_at: new Date().toISOString()
+            };
+          }
+          return report;
+        });
+        
+        setReports(updatedReports);
+        
+        // Update the selected report
+        if (selectedReport && selectedReport.report_id === reportId) {
+          setSelectedReport({
+            ...selectedReport,
+            title: editTitle,
+            description: editDescription,
+            city: editCity,
+            updated_at: new Date().toISOString()
+          });
+        }
+        
+        setUpdateSuccess(true);
+        setTimeout(() => setUpdateSuccess(false), 3000);
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error('Error updating report details:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -304,30 +415,144 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-6">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h3 className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {selectedReport.title}
-                        </h3>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedReport.status)}`}
-                        >
-                          {selectedReport.status}
-                        </span>
+                    {isEditing ? (
+                      <div>
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            Edit Report
+                          </h3>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedReport.status)}`}
+                          >
+                            {selectedReport.status}
+                          </span>
+                        </div>
+                        
+                        <div className="mb-4">
+                          <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Title
+                          </label>
+                          <input
+                            type="text"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            className={`w-full p-2 rounded-md ${
+                              theme === 'dark' 
+                                ? 'bg-gray-700 border-gray-600 text-white' 
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } border focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
+                          />
+                        </div>
+                        
+                        <div className="mb-4">
+                          <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Description
+                          </label>
+                          <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            rows={4}
+                            className={`w-full p-2 rounded-md ${
+                              theme === 'dark' 
+                                ? 'bg-gray-700 border-gray-600 text-white' 
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } border focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
+                          />
+                        </div>
+                        
+                        <div className="mb-4">
+                          <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            value={editCity}
+                            onChange={(e) => setEditCity(e.target.value)}
+                            className={`w-full p-2 rounded-md ${
+                              theme === 'dark' 
+                                ? 'bg-gray-700 border-gray-600 text-white' 
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } border focus:ring-1 focus:ring-blue-500 focus:border-blue-500`}
+                            placeholder="Enter city name"
+                          />
+                        </div>
+                        
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => saveEditedReport(selectedReport.report_id)}
+                            disabled={isUpdating}
+                            className={`px-3 py-1.5 rounded-md text-sm ${
+                              theme === 'dark'
+                                ? 'bg-blue-700 text-white hover:bg-blue-600'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {isUpdating ? 'Saving...' : 'Save Changes'}
+                          </button>
+                          
+                          <button
+                            onClick={cancelEditing}
+                            className={`px-3 py-1.5 rounded-md text-sm ${
+                              theme === 'dark'
+                                ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                      <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        ID: {selectedReport.report_id}
-                      </p>
-                    </div>
+                    ) : (
+                      <>
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <h3 className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {selectedReport.title}
+                            </h3>
+                            <div className="flex space-x-2">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedReport.status)}`}
+                              >
+                                {selectedReport.status}
+                              </span>
+                              <button 
+                                onClick={() => startEditing(selectedReport)}
+                                className={`p-1 rounded ${
+                                  theme === 'dark'
+                                    ? 'text-blue-400 hover:bg-gray-700'
+                                    : 'text-blue-600 hover:bg-gray-100'
+                                }`}
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteReport(selectedReport.report_id)}
+                                className={`p-1 rounded ${
+                                  theme === 'dark'
+                                    ? 'text-red-400 hover:bg-gray-700'
+                                    : 'text-red-600 hover:bg-gray-100'
+                                }`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            ID: {selectedReport.report_id}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <h4 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Description
+                          </h4>
+                          <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                            {selectedReport.description}
+                          </p>
+                        </div>
+                      </>
+                    )}
                     
-                    <div>
-                      <h4 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Description
-                      </h4>
-                      <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                        {selectedReport.description}
-                      </p>
-                    </div>
                     
                     <div>
                       <h4 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -336,6 +561,11 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
                         {selectedReport.location.address}
                       </p>
+                      {selectedReport.city && (
+                        <p className={`text-sm ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'} font-medium mt-1`}>
+                          City: {selectedReport.city}
+                        </p>
+                      )}
                       <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                         Lat: {selectedReport.location.lat.toFixed(6)}, Lng: {selectedReport.location.lng.toFixed(6)}
                       </p>
@@ -505,6 +735,19 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       <button
                         className="flex items-center focus:outline-none"
+                        onClick={() => handleSort('city')}
+                      >
+                        City
+                        {sortBy === 'city' && (
+                          sortOrder === 'asc' ? 
+                            <ArrowUp size={14} className="ml-1" /> : 
+                            <ArrowDown size={14} className="ml-1" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <button
+                        className="flex items-center focus:outline-none"
                         onClick={() => handleSort('created_at')}
                       >
                         Created
@@ -554,6 +797,9 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(report.status)}`}>
                           {report.status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {report.city || '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         {formatDate(report.created_at)}

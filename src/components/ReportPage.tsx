@@ -19,12 +19,21 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Water');
+  const [city, setCity] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number, lng: number, address: string }>({
     lat: 28.6139, 
     lng: 77.2090, 
     address: 'Connaught Place, New Delhi, India'
   });
+  
+  // List of popular cities in India for suggestions
+  const popularCities = [
+    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 
+    'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow',
+    'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 
+    'Visakhapatnam', 'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana'
+  ];
   
   // UI states
   const { theme, language } = useTheme();
@@ -217,7 +226,8 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
         category,
         location,
         image,
-        userId
+        userId,
+        city
       );
       
       if (response.success) {
@@ -430,6 +440,30 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
                 </option>
               ))}
             </select>
+          </div>
+          
+          {/* City Field */}
+          <div>
+            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+              City
+            </label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Enter your city"
+              list="city-suggestions"
+              className={`w-full p-4 ${
+                theme === 'dark' 
+                  ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                  : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+              } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
+            />
+            <datalist id="city-suggestions">
+              {popularCities.map((city, index) => (
+                <option key={index} value={city} />
+              ))}
+            </datalist>
           </div>
 
           {/* Location */}
