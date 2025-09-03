@@ -1,9 +1,6 @@
 import { supabase } from './supabase.ts';
 import { v4 as uuidv4 } from 'uuid';
 
-// Constants
-const RESOLVED_ISSUES_COUNTER_KEY = 'civicgo_resolved_issues_count';
-
 // Report data model
 export interface ReportData {
   report_id: string;
@@ -15,108 +12,12 @@ export interface ReportData {
     lng: number;
     address: string;
   };
-  city?: string; // Added city field
   image_url: string;
   status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved';
   created_at: string;
   updated_at: string;
   user_id: string;
 }
-
-// Get the current resolved issues count
-export const getResolvedIssuesCount = async (): Promise<number> => {
-  try {
-    // Try to get from Supabase first if configured
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      // First, try to get from the counters table
-      try {
-        const { data: counterData, error: counterError } = await supabase
-          .from('counters')
-          .select('value')
-          .eq('name', 'resolved_issues')
-          .single();
-        
-        if (!counterError && counterData) {
-          console.log('Retrieved resolved count from Supabase counter:', counterData.value);
-          return counterData.value;
-        }
-      } catch (e) {
-        console.log('No counter table found, falling back to counting reports');
-      }
-      
-      // If no counter exists, count resolved reports
-      const { data, error } = await supabase
-        .from('reports')
-        .select('*')
-        .eq('status', 'Resolved');
-      
-      if (!error && data) {
-        const count = data.length;
-        console.log('Counted resolved reports from Supabase:', count);
-        return count;
-      }
-    }
-    
-    // Fallback to localStorage
-    let count = parseInt(localStorage.getItem(RESOLVED_ISSUES_COUNTER_KEY) || '0', 10);
-    
-    // If counter doesn't exist yet, count resolved reports in localStorage
-    if (count === 0) {
-      const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-      count = allReports.filter(report => report.status === 'Resolved').length;
-      localStorage.setItem(RESOLVED_ISSUES_COUNTER_KEY, count.toString());
-      console.log('Counted resolved reports from localStorage:', count);
-    } else {
-      console.log('Retrieved resolved count from localStorage:', count);
-    }
-    
-    return count;
-  } catch (error) {
-    console.error('Error getting resolved issues count:', error);
-    return 0;
-  }
-};
-
-// Increment the resolved issues counter
-export const incrementResolvedIssuesCounter = async (): Promise<void> => {
-  try {
-    let currentCount = await getResolvedIssuesCount();
-    currentCount += 1;
-    
-    // Store in Supabase if available
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      try {
-        // Check if counter exists in the counters table
-        const { data: existingCounter } = await supabase
-          .from('counters')
-          .select('*')
-          .eq('name', 'resolved_issues')
-          .single();
-        
-        if (existingCounter) {
-          // Update existing counter
-          await supabase
-            .from('counters')
-            .update({ value: currentCount })
-            .eq('name', 'resolved_issues');
-        } else {
-          // Create new counter
-          await supabase
-            .from('counters')
-            .insert({ name: 'resolved_issues', value: currentCount });
-        }
-      } catch (dbError) {
-        console.error('Failed to update counter in Supabase:', dbError);
-      }
-    }
-    
-    // Always update localStorage as a backup
-    localStorage.setItem(RESOLVED_ISSUES_COUNTER_KEY, currentCount.toString());
-    console.log('Resolved issues counter incremented to:', currentCount);
-  } catch (error) {
-    console.error('Error incrementing resolved issues counter:', error);
-  }
-};
 
 interface ReportSubmissionResponse {
   success: boolean;
@@ -245,8 +146,7 @@ export const submitReport = async (
   category: string,
   location: { lat: number, lng: number, address: string },
   imageData: string | null,
-  userId: string = 'anon_user', // Default for anonymous users
-  city: string = '' // Optional city field
+  userId: string = 'anon_user' // Default for anonymous users
 ): Promise<ReportSubmissionResponse> => {
   try {
     const reportId = generateReferenceNumber(category);
@@ -270,7 +170,6 @@ export const submitReport = async (
       description,
       category: normalizedCategory, // Use the normalized category with proper case
       location,
-      city: city || '', // Include city information
       image_url: imageUrl,
       status: 'Submitted',
       created_at: timestamp,
@@ -449,11 +348,6 @@ export const updateReportStatus = async (reportId: string, status: 'Submitted' |
   try {
     const timestamp = new Date().toISOString();
     
-    // Update resolved issues counter if status is set to Resolved
-    if (status === 'Resolved') {
-      await incrementResolvedIssuesCounter();
-    }
-    
     // Try to update in Supabase first
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
       const { error } = await supabase
@@ -497,105 +391,5 @@ export const updateReportStatus = async (reportId: string, status: 'Submitted' |
     } catch {
       return false;
     }
-  }
-};
-
-// Delete a report
-export const deleteReport = async (reportId: string): Promise<boolean> => {
-  try {
-    // Try to delete from Supabase first
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      const { error } = await supabase
-        .from('reports')
-        .delete()
-        .eq('report_id', reportId);
-      
-      if (error) throw error;
-      
-      // Also try to delete the associated image if it exists
-      try {
-        const report = await getReportById(reportId);
-        if (report && report.image_url) {
-          const imageName = report.image_url.split('/').pop();
-          if (imageName) {
-            await supabase.storage
-              .from('report-images')
-              .remove([`public/${imageName}`]);
-          }
-        }
-      } catch (imageError) {
-        console.error('Error deleting report image:', imageError);
-      }
-      
-      return true;
-    }
-    
-    // Fallback to localStorage
-    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-    const reportIndex = allReports.findIndex(r => r.report_id === reportId);
-    
-    if (reportIndex === -1) return false;
-    
-    allReports.splice(reportIndex, 1);
-    localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
-    return true;
-  } catch (error) {
-    console.error('Error deleting report:', error);
-    
-    // Final fallback
-    try {
-      const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-      const reportIndex = allReports.findIndex(r => r.report_id === reportId);
-      
-      if (reportIndex === -1) return false;
-      
-      allReports.splice(reportIndex, 1);
-      localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-
-// Update a report's details
-export const updateReportDetails = async (
-  reportId: string, 
-  updates: { title?: string; description?: string; category?: string; city?: string }
-): Promise<boolean> => {
-  try {
-    const timestamp = new Date().toISOString();
-    
-    // Try to update in Supabase first
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      const { error } = await supabase
-        .from('reports')
-        .update({ 
-          ...updates,
-          updated_at: timestamp
-        })
-        .eq('report_id', reportId);
-      
-      if (error) throw error;
-      return true;
-    }
-    
-    // Fallback to localStorage
-    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
-    const reportIndex = allReports.findIndex(r => r.report_id === reportId);
-    
-    if (reportIndex === -1) return false;
-    
-    allReports[reportIndex] = {
-      ...allReports[reportIndex],
-      ...updates,
-      updated_at: timestamp
-    };
-    
-    localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
-    return true;
-  } catch (error) {
-    console.error('Error updating report details:', error);
-    return false;
   }
 };
