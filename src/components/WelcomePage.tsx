@@ -1,6 +1,7 @@
 import { Twitter, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
+import AnimationContainer from './AnimationContainer';
 
 interface WelcomePageProps {
   onSignIn: (provider: string) => void;
@@ -28,10 +29,13 @@ function WelcomePage({ onSignIn, onContinueAnonymously }: WelcomePageProps) {
       {/* Hero Illustration */}
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 max-w-6xl mx-auto">
         <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1/2">
-          <img 
-            src="https://images.pexels.com/photos/3184287/pexels-photo-3184287.jpeg?auto=compress&cs=tinysrgb&w=800" 
-            alt="Community illustration" 
-            className="w-full h-64 md:h-96 object-cover rounded-2xl shadow-lg"
+          <AnimationContainer 
+            animationPath="/animations/civicgo-welcome.json" 
+            fallbackImageUrl="https://images.pexels.com/photos/3184287/pexels-photo-3184287.jpeg?auto=compress&cs=tinysrgb&w=800"
+            altText="Community engagement animation" 
+            className="w-full h-64 md:h-96 rounded-2xl shadow-lg"
+            loop={true}
+            autoplay={true}
           />
         </div>
 

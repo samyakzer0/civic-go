@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getReportsByCategory, updateReportStatus, ReportData } from '../../services/ReportService';
+import { getReportsByCategory, updateReportStatus, ReportData, getCityList } from '../../services/ReportService';
 import { 
   ArrowDown, 
   ArrowUp, 
@@ -10,7 +10,8 @@ import {
   Filter, 
   RefreshCw, 
   Search, 
-  Send 
+  Send,
+  MapPin
 } from 'lucide-react';
 
 interface CategoryAdminProps {
@@ -24,6 +25,8 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
+  const [cityList, setCityList] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
@@ -33,12 +36,22 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   // Load reports on mount and when category changes
   useEffect(() => {
     loadReports();
+    loadCityList();
   }, [category]);
 
   // Apply filters and sorting when reports, search term, or filters change
   useEffect(() => {
     applyFiltersAndSort();
-  }, [reports, searchTerm, statusFilter, sortBy, sortOrder]);
+  }, [reports, searchTerm, statusFilter, cityFilter, sortBy, sortOrder]);
+  
+  const loadCityList = async () => {
+    try {
+      const cities = await getCityList();
+      setCityList(cities);
+    } catch (error) {
+      console.error('Error loading city list:', error);
+    }
+  };
 
   const loadReports = async () => {
     try {
@@ -65,13 +78,21 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
           report.title.toLowerCase().includes(searchLower) ||
           report.description.toLowerCase().includes(searchLower) ||
           report.report_id.toLowerCase().includes(searchLower) ||
-          report.location.address.toLowerCase().includes(searchLower)
+          report.location.address.toLowerCase().includes(searchLower) ||
+          (report.city && report.city.toLowerCase().includes(searchLower))
       );
     }
     
     // Apply status filter
     if (statusFilter) {
       filtered = filtered.filter(report => report.status === statusFilter);
+    }
+    
+    // Apply city filter
+    if (cityFilter) {
+      filtered = filtered.filter(report => 
+        report.city && report.city.toLowerCase() === cityFilter.toLowerCase()
+      );
     }
     
     // Apply sorting
@@ -87,6 +108,9 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       } else if (sortBy === 'title') {
         valA = a.title.toLowerCase();
         valB = b.title.toLowerCase();
+      } else if (sortBy === 'city') {
+        valA = (a.city || '').toLowerCase();
+        valB = (b.city || '').toLowerCase();
       } else {
         valA = a[sortBy as keyof ReportData];
         valB = b[sortBy as keyof ReportData];
@@ -192,14 +216,14 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   };
 
   return (
-    <div className="pb-24">
+    <div className="pb-6">
       {/* Header */}
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <h1 className={`text-2xl font-bold mb-3 sm:mb-0 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+      <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {category} Reports
-        </h1>
+        </h2>
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={loadReports}
             className={`flex items-center px-3 py-1.5 text-sm rounded-md ${
@@ -226,7 +250,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       
       {/* Filter and Search Bar */}
       <div className={`mb-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow`}>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={18} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
@@ -266,6 +290,28 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
               <option value="In Review">In Review</option>
               <option value="Forwarded">Forwarded</option>
               <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MapPin size={18} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
+            </div>
+            <select
+              className={`block w-full pl-10 pr-3 py-2 border rounded-md appearance-none ${
+                theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-900'
+              } focus:outline-none focus:ring-1 ${
+                theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-500'
+              }`}
+              value={cityFilter || ''}
+              onChange={e => setCityFilter(e.target.value || null)}
+            >
+              <option value="">All Cities</option>
+              {cityList.map((city, index) => (
+                <option key={index} value={city}>{city}</option>
+              ))}
             </select>
           </div>
           
@@ -335,6 +381,9 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       </h4>
                       <p className={`mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
                         {selectedReport.location.address}
+                      </p>
+                      <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                        City: {selectedReport.city || 'Unknown'}
                       </p>
                       <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                         Lat: {selectedReport.location.lat.toFixed(6)}, Lng: {selectedReport.location.lng.toFixed(6)}
@@ -500,6 +549,19 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <button
+                        className="flex items-center focus:outline-none"
+                        onClick={() => handleSort('city')}
+                      >
+                        City
+                        {sortBy === 'city' && (
+                          sortOrder === 'asc' ? 
+                            <ArrowUp size={14} className="ml-1" /> : 
+                            <ArrowDown size={14} className="ml-1" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
@@ -549,6 +611,9 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {report.title}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        {report.city || 'Unknown'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(report.status)}`}>

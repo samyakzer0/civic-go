@@ -9,6 +9,7 @@ CivicGo is a citizen-centric civic issue reporting platform designed to bridge t
 - Category-based admin panel for managing reports
 - Multi-language support
 - Dark/Light theme
+- Engaging animations and visual feedback
 
 ## Tech Stack
 
@@ -17,6 +18,7 @@ CivicGo is a citizen-centric civic issue reporting platform designed to bridge t
 - TailwindCSS
 - Supabase for backend and authentication
 - Lucide icons
+- Lottie animations for engaging UI
 
 ## Environment Setup
 

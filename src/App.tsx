@@ -9,7 +9,7 @@ import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { translations } from './utils/translations';
-import { getCurrentUser, signInWithGoogle } from './services/supabase.ts';
+import { getCurrentUser, signInWithGoogle, isAdmin } from './services/supabase.ts';
 
 type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin';
 
@@ -18,7 +18,6 @@ function AppContent() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const { theme, language } = useTheme();
   const t = translations[language];
   
@@ -29,19 +28,23 @@ function AppContent() {
         const currentUser = await getCurrentUser();
         if (currentUser) {
           setIsSignedIn(true);
+          
+          // Check if the user is an admin
+          const adminStatus = await isAdmin();
+          console.log('User admin status:', adminStatus);
+          
           setUser({
             name: currentUser.user_metadata?.full_name || 'User',
             email: currentUser.email,
             phone: currentUser.phone || '',
             joinedYear: new Date(currentUser.created_at).getFullYear().toString(),
-            avatar: currentUser.user_metadata?.avatar_url || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
+            avatar: currentUser.user_metadata?.avatar_url || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            isAdmin: adminStatus
           });
           setCurrentPage('home');
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
-      } finally {
-        setAuthChecked(true);
       }
     };
     
@@ -68,7 +71,7 @@ function AppContent() {
   const handleSignIn = async (provider: string) => {
     if (provider === 'google') {
       try {
-        const { data, error } = await signInWithGoogle();
+        const { error } = await signInWithGoogle();
         if (error) {
           console.error("Google Sign-In Error:", error);
           return;
@@ -124,6 +127,25 @@ function AppContent() {
 
     const userId = getUserId();
 
+    // Security check - redirect to home if trying to access admin page without admin privileges
+    if (currentPage === 'admin' && !user?.isAdmin) {
+      console.warn('Unauthorized access attempt to admin page');
+      // Redirect to home page if not admin
+      setTimeout(() => setCurrentPage('home'), 0);
+      return <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-4">Access Denied</h2>
+          <p>You don't have permission to access the admin panel.</p>
+          <button 
+            className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => setCurrentPage('home')}
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>;
+    }
+
     switch (currentPage) {
       case 'welcome':
         return (
@@ -133,7 +155,7 @@ function AppContent() {
           />
         );
       case 'home':
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomePage onNavigate={handleNavigate} userId={userId} />;
       case 'report':
         return <ReportPage onNavigate={handleNavigate} cameraActive={cameraActive} userId={userId} />;
       case 'status':
@@ -143,7 +165,7 @@ function AppContent() {
       case 'about':
         return <AboutPage onNavigate={handleNavigate} />;
       case 'admin':
-        return <AdminPage />;
+        return <AdminPage onNavigate={handleNavigate} user={user} />; // Pass user to AdminPage
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
@@ -207,18 +229,20 @@ function AppContent() {
                 <span className="text-xs mt-1">{t.profile}</span>
               </button>
               
-              {/* Developer mode: Direct admin access */}
-              <button
-                onClick={() => setCurrentPage('admin')}
-                className={`flex flex-col items-center py-2 px-1 transition-colors ${
-                  currentPage === 'admin' 
-                    ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
-                    : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}
-              >
-                <ShieldAlert size={24} />
-                <span className="text-xs mt-1">Admin</span>
-              </button>
+              {/* Admin panel - only visible to admins */}
+              {user?.isAdmin && (
+                <button
+                  onClick={() => setCurrentPage('admin')}
+                  className={`flex flex-col items-center py-2 px-1 transition-colors ${
+                    currentPage === 'admin' 
+                      ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
+                      : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  }`}
+                >
+                  <ShieldAlert size={24} />
+                  <span className="text-xs mt-1">Admin</span>
+                </button>
+              )}
             </div>
           </nav>
         )}

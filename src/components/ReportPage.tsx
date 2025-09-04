@@ -6,7 +6,7 @@ import AIAnalysis from './AIAnalysis';
 import LocationMap from './LocationMap';
 import ReportConfirmationModal from './ReportConfirmationModal';
 import { analyzeImage } from '../services/AIService';
-import { getCurrentLocation, submitReport } from '../services/ReportService';
+import { getCurrentLocation, submitReport, getCityList } from '../services/ReportService';
 
 interface ReportPageProps {
   onNavigate: (page: string) => void;
@@ -20,11 +20,15 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Water');
   const [image, setImage] = useState<string | null>(null);
-  const [location, setLocation] = useState<{ lat: number, lng: number, address: string }>({
+  const [location, setLocation] = useState<{ lat: number, lng: number, address: string, city: string }>({
     lat: 28.6139, 
     lng: 77.2090, 
-    address: 'Connaught Place, New Delhi, India'
+    address: 'Connaught Place, New Delhi, India',
+    city: 'New Delhi'
   });
+  const [cityInput, setCityInput] = useState('');
+  const [suggestedCities, setSuggestedCities] = useState<string[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   
   // UI states
   const { theme, language } = useTheme();
@@ -55,6 +59,17 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   // Categories supported by the app
   const categories = ['Water', 'Electricity', 'Infrastructure', 'Sanitation', 'Roads', 'Others'];
 
+  // Fetch the list of cities for autocomplete
+  const fetchCities = async () => {
+    try {
+      const cities = await getCityList();
+      return cities;
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     // Check if camera should be activated automatically
     if (cameraActive) {
@@ -74,11 +89,39 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
     };
   }, [cameraActive]);
 
+  // Handle city input changes and show suggestions
+  const handleCityInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCityInput(value);
+    
+    if (value.length > 1) {
+      const cities = await fetchCities();
+      const filtered = cities.filter(city => 
+        city.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 5); // Limit to 5 suggestions
+      
+      setSuggestedCities(filtered);
+      setShowCitySuggestions(filtered.length > 0);
+    } else {
+      setSuggestedCities([]);
+      setShowCitySuggestions(false);
+    }
+  };
+
+  // Select a city from suggestions
+  const selectCity = (city: string) => {
+    setCityInput(city);
+    setLocation({...location, city});
+    setShowCitySuggestions(false);
+  };
+
   const fetchCurrentLocation = async () => {
     try {
       setIsLoadingLocation(true);
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
+      // Update the city input field with the detected city
+      setCityInput(currentLocation.city);
     } catch (error) {
       console.error('Error fetching location:', error);
       // Keep default location in case of error
@@ -233,7 +276,8 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   };
 
   const handleLocationChange = (newLocation: { lat: number, lng: number, address: string }) => {
-    setLocation(newLocation);
+    // Preserve the city when updating location
+    setLocation({...newLocation, city: location.city});
   };
 
   return (
@@ -455,6 +499,56 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
                 )}
                 <span>{t.useLocation}</span>
               </button>
+            </div>
+            
+            {/* City Input with Autocomplete */}
+            <div className="mb-4 relative">
+              <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                City
+              </label>
+              <input
+                type="text"
+                value={cityInput}
+                onChange={handleCityInputChange}
+                placeholder="Enter your city"
+                className={`w-full p-4 ${
+                  theme === 'dark' 
+                    ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                    : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+                } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
+                onFocus={() => setShowCitySuggestions(suggestedCities.length > 0)}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow clicking on them
+                  setTimeout(() => setShowCitySuggestions(false), 200);
+                  // Update location with the entered city
+                  if (cityInput) {
+                    setLocation({...location, city: cityInput});
+                  }
+                }}
+              />
+              
+              {/* City suggestions dropdown */}
+              {showCitySuggestions && (
+                <div className={`absolute z-10 w-full mt-1 py-1 ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-white border-gray-200'
+                } border rounded-md shadow-lg`}>
+                  {suggestedCities.map((city, index) => (
+                    <div 
+                      key={index} 
+                      className={`px-4 py-2 cursor-pointer ${
+                        theme === 'dark' 
+                          ? 'hover:bg-gray-700' 
+                          : 'hover:bg-gray-100'
+                      }`}
+                      onClick={() => selectCity(city)}
+                    >
+                      {city}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
             {/* Location Map */}

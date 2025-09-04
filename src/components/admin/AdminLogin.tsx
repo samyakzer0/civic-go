@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 import { signInWithEmail } from '../../services/supabase.ts';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -34,75 +35,87 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className={`w-full max-w-md p-8 space-y-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg`}>
-        <div className="text-center">
-          <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>CivicGo Admin</h1>
-          <p className={`mt-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Sign in to access the admin dashboard</p>
+    <div className={`w-full max-w-md p-6 space-y-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl shadow-sm border`}>
+      <div className="text-center">
+        <div className="flex justify-center mb-4">
+          <div className={`p-3 rounded-full ${theme === 'dark' ? 'bg-blue-900' : 'bg-blue-100'}`}>
+            <ShieldAlert size={32} className={`${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+          </div>
+        </div>
+        <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Admin Access</h1>
+        <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+          Sign in with your admin credentials
+        </p>
+      </div>
+      
+      {error && (
+        <div className={`p-3 rounded-lg text-sm ${
+          theme === 'dark' 
+            ? 'bg-red-900/50 text-red-200 border border-red-800' 
+            : 'bg-red-100 text-red-800 border border-red-200'
+        }`} role="alert">
+          <p>{error}</p>
+        </div>
+      )}
+      
+      <form className="space-y-5" onSubmit={handleLogin}>
+        <div>
+          <label htmlFor="email" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            Email Address
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            className={`block w-full p-3 ${
+              theme === 'dark' 
+                ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+            } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="admin@civicgo.org"
+          />
         </div>
         
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded" role="alert">
-            <p>{error}</p>
-          </div>
-        )}
+        <div>
+          <label htmlFor="password" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            className={`block w-full p-3 ${
+              theme === 'dark' 
+                ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+            } border rounded-xl focus:ring-2 focus:border-transparent transition-all`}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+        </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div>
-            <label htmlFor="email" className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              Email Address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className={`mt-1 block w-full px-3 py-2 border ${
-                theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white' : 'border-gray-300 bg-white text-gray-900'
-              } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@civicgo.org"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="password" className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className={`mt-1 block w-full px-3 py-2 border ${
-                theme === 'dark' ? 'border-gray-700 bg-gray-800 text-white' : 'border-gray-300 bg-white text-gray-900'
-              } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                theme === 'dark' 
-                  ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' 
-                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full ${
+              theme === 'dark'
+                ? 'bg-blue-700 hover:bg-blue-800'
+                : 'bg-blue-600 hover:bg-blue-700'
+            } ${isLoading ? 'opacity-70 cursor-not-allowed' : ''} text-white py-3 rounded-xl font-medium transition-colors shadow flex items-center justify-center gap-2`}
+          >
+            {isLoading && <Loader2 size={18} className="animate-spin" />}
+            {isLoading ? 'Verifying...' : 'Sign in to Admin'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -1,6 +1,16 @@
 import { supabase } from './supabase.ts';
 import { v4 as uuidv4 } from 'uuid';
 
+// List of major cities for mock data
+export const majorCities = [
+  "Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", 
+  "Kolkata", "Ahmedabad", "Pune", "Jaipur", "Lucknow",
+  "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal",
+  "Visakhapatnam", "Patna", "Vadodara", "Ludhiana", "Agra",
+  "New York", "London", "Tokyo", "Shanghai", "Paris",
+  "Singapore", "Dubai", "Sydney", "Toronto", "Berlin"
+];
+
 // Report data model
 export interface ReportData {
   report_id: string;
@@ -12,6 +22,7 @@ export interface ReportData {
     lng: number;
     address: string;
   };
+  city: string; // Add city field
   image_url: string;
   status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved';
   created_at: string;
@@ -90,7 +101,7 @@ const uploadImage = async (imageData: string, reportId: string): Promise<string>
 };
 
 // Get user's current location
-export const getCurrentLocation = (): Promise<{ lat: number, lng: number, address: string }> => {
+export const getCurrentLocation = (): Promise<{ lat: number, lng: number, address: string, city: string }> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by your browser'));
@@ -108,10 +119,23 @@ export const getCurrentLocation = (): Promise<{ lat: number, lng: number, addres
             );
             const data = await response.json();
             if (data.results && data.results.length > 0) {
+              // Extract city from address components
+              let city = "Unknown";
+              if (data.results[0].address_components) {
+                for (const component of data.results[0].address_components) {
+                  if (component.types.includes('locality') || 
+                      component.types.includes('administrative_area_level_2')) {
+                    city = component.long_name;
+                    break;
+                  }
+                }
+              }
+              
               resolve({
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
-                address: data.results[0].formatted_address
+                address: data.results[0].formatted_address,
+                city: city
               });
               return;
             }
@@ -121,14 +145,16 @@ export const getCurrentLocation = (): Promise<{ lat: number, lng: number, addres
           resolve({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-            address: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`
+            address: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`,
+            city: "Unknown"
           });
         } catch (error) {
           // If geocoding fails, still return the coordinates
           resolve({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-            address: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`
+            address: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`,
+            city: "Unknown"
           });
         }
       },
@@ -144,7 +170,7 @@ export const submitReport = async (
   title: string,
   description: string,
   category: string,
-  location: { lat: number, lng: number, address: string },
+  location: { lat: number, lng: number, address: string, city: string },
   imageData: string | null,
   userId: string = 'anon_user' // Default for anonymous users
 ): Promise<ReportSubmissionResponse> => {
@@ -164,12 +190,24 @@ export const submitReport = async (
       c => c.toLowerCase() === category.toLowerCase()
     ) || category;
     
+    // Extract city from address if not provided
+    let city = location.city || "Unknown";
+    if (city === "Unknown" && location.address) {
+      // Try to extract city from address as fallback
+      const addressParts = location.address.split(',').map(part => part.trim());
+      if (addressParts.length > 1) {
+        // Assume second-to-last part might be the city in many address formats
+        city = addressParts[addressParts.length - 2];
+      }
+    }
+    
     const reportData = {
       report_id: reportId,
       title,
       description,
       category: normalizedCategory, // Use the normalized category with proper case
       location,
+      city, // Add city to report data
       image_url: imageUrl,
       status: 'Submitted',
       created_at: timestamp,
@@ -310,6 +348,54 @@ export const getReportsByCategory = async (category: string): Promise<ReportData
   }
 };
 
+// Get all reports for admin by city
+export const getReportsByCity = async (city: string): Promise<ReportData[]> => {
+  try {
+    // Try to get from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.log(`Fetching reports for city: ${city} from Supabase`);
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .ilike('city', city) // Case-insensitive match
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} reports for city ${city} in Supabase`);
+      return data as ReportData[];
+    } else {
+      console.log('Supabase credentials not found, using localStorage');
+    }
+    
+    // Fallback to localStorage with case-insensitive comparison
+    const storageData = localStorage.getItem('civicgo_reports');
+    console.log(`LocalStorage data exists: ${!!storageData}`);
+    const allReports: ReportData[] = JSON.parse(storageData || '[]');
+    const filteredReports = allReports.filter(report => 
+      report.city && report.city.toLowerCase().includes(city.toLowerCase())
+    );
+    console.log(`Found ${filteredReports.length} reports in localStorage for city ${city}`);
+    return filteredReports;
+  } catch (error) {
+    console.error('Error fetching city reports:', error);
+    
+    // Final fallback
+    try {
+      const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+      return allReports.filter(report => 
+        report.city && report.city.toLowerCase().includes(city.toLowerCase())
+      );
+    } catch (e) {
+      console.error('Failed to parse localStorage data:', e);
+      return [];
+    }
+  }
+};
+
 // Get a specific report by ID
 export const getReportById = async (reportId: string): Promise<ReportData | null> => {
   try {
@@ -339,6 +425,101 @@ export const getReportById = async (reportId: string): Promise<ReportData | null
       return report || null;
     } catch {
       return null;
+    }
+  }
+};
+
+// Get list of cities from all reports (for autocomplete)
+export const getCityList = async (): Promise<string[]> => {
+  try {
+    // Try to get from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('city');
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      // Extract unique cities
+      const cities = [...new Set(data?.map(report => report.city).filter(Boolean))];
+      
+      // If we don't have many cities, add some from our major cities list
+      if (cities.length < 5) {
+        return [...cities, ...majorCities.slice(0, 10)];
+      }
+      
+      return cities as string[];
+    }
+    
+    // Fallback to localStorage
+    const storageData = localStorage.getItem('civicgo_reports');
+    const allReports: ReportData[] = JSON.parse(storageData || '[]');
+    const cities = [...new Set(allReports.map(report => report.city).filter(Boolean))];
+    
+    // If we don't have many cities, add some from our major cities list
+    if (cities.length < 5) {
+      return [...cities, ...majorCities.slice(0, 10)];
+    }
+    
+    return cities;
+  } catch (error) {
+    console.error('Error fetching city list:', error);
+    // Return some default cities
+    return majorCities.slice(0, 10);
+  }
+};
+
+// Get recent reports for the homepage
+export const getRecentReports = async (limit: number = 5): Promise<ReportData[]> => {
+  try {
+    // Try to get from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.log(`Fetching recent reports from Supabase (limit: ${limit})`);
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} recent reports in Supabase`);
+      return data as ReportData[];
+    } else {
+      console.log('Supabase credentials not found, using localStorage');
+    }
+    
+    // Fallback to localStorage
+    const storageData = localStorage.getItem('civicgo_reports');
+    console.log(`LocalStorage data exists: ${!!storageData}`);
+    const allReports: ReportData[] = JSON.parse(storageData || '[]');
+    
+    // Sort by updated_at and take the most recent ones
+    const sortedReports = [...allReports].sort((a, b) => 
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    ).slice(0, limit);
+    
+    console.log(`Found ${sortedReports.length} recent reports in localStorage`);
+    return sortedReports;
+  } catch (error) {
+    console.error('Error fetching recent reports:', error);
+    
+    // Final fallback
+    try {
+      const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+      const sortedReports = [...allReports].sort((a, b) => 
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      ).slice(0, limit);
+      return sortedReports;
+    } catch (e) {
+      console.error('Failed to parse localStorage data:', e);
+      return [];
     }
   }
 };

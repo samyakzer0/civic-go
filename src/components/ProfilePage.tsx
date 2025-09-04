@@ -26,22 +26,27 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
     // Check if user has admin privileges
     const checkAdminStatus = async () => {
       try {
-        const adminStatus = await isAdmin();
-        // For development purposes, always show admin panel
-        setIsAdminUser(true); // Set to true for development
+        // Use the admin status passed from App.tsx if available
+        if (user && user.isAdmin !== undefined) {
+          setIsAdminUser(user.isAdmin);
+        } else {
+          // Fallback to checking directly
+          const adminStatus = await isAdmin();
+          setIsAdminUser(adminStatus);
+        }
         
         // Check if user is an admin for any category
         const hasCategories = await isCategoryAdmin('Water'); // Check at least one category
-        setHasCategoryAccess(true); // Set to true for development
+        setHasCategoryAccess(hasCategories);
         
-        console.log("Admin status check:", { isAdmin: adminStatus, hasCategories });
+        console.log("Admin status check:", { isAdmin: user?.isAdmin || isAdminUser, hasCategories });
       } catch (error) {
         console.error('Error checking admin status:', error);
       }
     };
     
     checkAdminStatus();
-  }, []);
+  }, [user]);
 
   if (!user) {
     return (
