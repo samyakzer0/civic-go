@@ -5,7 +5,7 @@ import {
   markNotificationAsRead, 
   markAllNotificationsAsRead,
   Notification 
-} from '../services/NotificationService';
+} from '../services/EnhancedNotificationService';
 
 interface NotificationContextType {
   notifications: Notification[];

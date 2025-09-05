@@ -8,12 +8,17 @@ import WelcomePage from './components/WelcomePage';
 import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
 import NotificationsPage from './components/NotificationsPage';
+import NotificationsHistoryPage from './components/NotificationsHistoryPage';
+import NotificationPreferencesPage from './components/NotificationPreferencesPage';
+import NotificationCenter from './components/NotificationCenter';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { translations } from './utils/translations';
 import { getCurrentUser, signInWithGoogle, isAdmin } from './services/supabase.ts';
+// Import firebase services
+import { initializeFirebaseMessaging, requestNotificationPermission, onForegroundMessage } from './services/firebase';
 
-type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications';
+type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
@@ -101,9 +106,7 @@ function AppContent() {
     }
   };
 
-  const handleContinueAnonymously = () => {
-    setCurrentPage('home');
-  };
+  // Anonymous login has been removed as requested
 
   const handleSignOut = () => {
     setIsSignedIn(false);
@@ -169,6 +172,10 @@ function AppContent() {
         return <AdminPage onNavigate={handleNavigate} user={user} />; // Pass user to AdminPage
       case 'notifications':
         return <NotificationsPage onNavigate={handleNavigate} userId={userId} />;
+      case 'notifications-history':
+        return <NotificationsHistoryPage onNavigate={handleNavigate} userId={userId} />;
+      case 'notification-preferences':
+        return <NotificationPreferencesPage onNavigate={handleNavigate} userId={userId} />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
@@ -262,19 +269,29 @@ function App() {
   });
   
   useEffect(() => {
-    // Update userId when user signs in
-    const checkAuth = async () => {
+    // Update userId when user signs in and initialize Firebase notifications
+    const setupUser = async () => {
       try {
+        // Check if user is authenticated
         const currentUser = await getCurrentUser();
         if (currentUser && currentUser.email) {
-          setUserId(currentUser.email);
+          const userEmail = currentUser.email;
+          setUserId(userEmail);
+          
+          // Initialize Firebase notifications
+          console.log("User authenticated:", userEmail);
+          
+          // Initialize Firebase messaging
+          await initializeFirebaseMessaging();
+          await requestNotificationPermission();
+          onForegroundMessage(userEmail);
         }
       } catch (error) {
-        console.error("Error checking user for notifications:", error);
+        console.error("Error setting up user and notifications:", error);
       }
     };
     
-    checkAuth();
+    setupUser();
   }, []);
   
   return (

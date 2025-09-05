@@ -115,7 +115,16 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
 
         {/* Notification Preferences */}
         <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-xl p-6 shadow-sm border mb-6`}>
-          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.notificationPreferences}</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{t.notificationPreferences}</h3>
+            
+            <button 
+              onClick={() => onNavigate('notification-preferences')}
+              className={`text-sm ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
+            >
+              Manage
+            </button>
+          </div>
           
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -153,6 +162,18 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
                 />
               </button>
             </div>
+            
+            <button
+              onClick={() => onNavigate('notifications-history')}
+              className={`w-full py-2 mt-2 text-center rounded-lg ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+              } transition-colors`}
+            >
+              View Notification History
+            </button>
+            
           </div>
         </div>
 

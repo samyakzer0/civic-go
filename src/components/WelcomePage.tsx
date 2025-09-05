@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -14,15 +14,8 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-gray-800 to-gray-900' : 'bg-gradient-to-b from-blue-50 to-green-50'} flex flex-col`}>
       {/* Header */}
-      <div className="text-center py-8 flex justify-between items-center px-6">
-        <div className="w-10"></div> {/* Empty div for centering */}
+      <div className="text-center py-8 flex justify-center items-center px-6">
         <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>CivicGo</h1>
-        <button 
-          onClick={() => onSignIn('settings')} 
-          className={`p-2 ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'} transition-colors`}
-        >
-          <Settings size={24} />
-        </button>
       </div>
 
       {/* Hero Illustration */}
