@@ -103,16 +103,12 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
               <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.email}</span>
             </div>
             
-            <div className="flex justify-between items-center py-2">
-              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.phone}</span>
-              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-medium`}>{user.phone}</span>
-            </div>
-            
-            <div className="flex justify-between items-center py-2">
-              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t.password}</span>
-              <button className={`${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors`}>
-                {t.change}
-              </button>
+            <div className="flex items-center py-2">
+              <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50'} w-full text-center p-2 rounded-lg`}>
+                <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
+                  <span className="text-blue-500">Google</span> account connected
+                </p>
+              </div>
             </div>
           </div>
         </div>

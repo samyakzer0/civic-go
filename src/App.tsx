@@ -7,11 +7,13 @@ import ProfilePage from './components/ProfilePage';
 import WelcomePage from './components/WelcomePage';
 import AboutPage from './components/AboutPage';
 import AdminPage from './components/AdminPage';
+import NotificationsPage from './components/NotificationsPage';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { translations } from './utils/translations';
 import { getCurrentUser, signInWithGoogle, isAdmin } from './services/supabase.ts';
 
-type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin';
+type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
@@ -151,7 +153,6 @@ function AppContent() {
         return (
           <WelcomePage
             onSignIn={handleSignIn}
-            onContinueAnonymously={handleContinueAnonymously}
           />
         );
       case 'home':
@@ -166,6 +167,8 @@ function AppContent() {
         return <AboutPage onNavigate={handleNavigate} />;
       case 'admin':
         return <AdminPage onNavigate={handleNavigate} user={user} />; // Pass user to AdminPage
+      case 'notifications':
+        return <NotificationsPage onNavigate={handleNavigate} userId={userId} />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }
@@ -252,9 +255,33 @@ function AppContent() {
 }
 
 function App() {
+  const [userId, setUserId] = useState<string>(() => {
+    // Get user ID from localStorage if available
+    const storedId = localStorage.getItem('civicgo_anonymous_id');
+    return storedId || 'anon_default';
+  });
+  
+  useEffect(() => {
+    // Update userId when user signs in
+    const checkAuth = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser && currentUser.email) {
+          setUserId(currentUser.email);
+        }
+      } catch (error) {
+        console.error("Error checking user for notifications:", error);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+  
   return (
     <ThemeProvider>
-      <AppContent />
+      <NotificationProvider userId={userId}>
+        <AppContent />
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

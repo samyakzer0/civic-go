@@ -1,14 +1,13 @@
-import { Twitter, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
-import AnimationContainer from './AnimationContainer';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface WelcomePageProps {
   onSignIn: (provider: string) => void;
-  onContinueAnonymously: () => void;
 }
 
-function WelcomePage({ onSignIn, onContinueAnonymously }: WelcomePageProps) {
+function WelcomePage({ onSignIn }: WelcomePageProps) {
   const { theme, language } = useTheme();
   const t = translations[language];
 
@@ -29,14 +28,14 @@ function WelcomePage({ onSignIn, onContinueAnonymously }: WelcomePageProps) {
       {/* Hero Illustration */}
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 max-w-6xl mx-auto">
         <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1/2">
-          <AnimationContainer 
-            animationPath="/animations/civicgo-welcome.json" 
-            fallbackImageUrl="https://images.pexels.com/photos/3184287/pexels-photo-3184287.jpeg?auto=compress&cs=tinysrgb&w=800"
-            altText="Community engagement animation" 
-            className="w-full h-64 md:h-96 rounded-2xl shadow-lg"
-            loop={true}
-            autoplay={true}
-          />
+          <div className="w-full h-64 md:h-96 rounded-2xl shadow-lg overflow-hidden">
+            <DotLottieReact
+              src="https://lottie.host/ca2cf854-2b75-4fc5-8638-8ac8b9cc9c88/67uGha99NN.lottie"
+              loop
+              autoplay
+              className="w-full h-full"
+            />
+          </div>
         </div>
 
         <div className="md:w-1/2">
@@ -62,29 +61,6 @@ function WelcomePage({ onSignIn, onContinueAnonymously }: WelcomePageProps) {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               {t.signInWithGoogle}
-            </button>
-            
-            <button
-              onClick={() => onSignIn('twitter')}
-              className={`w-full ${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-blue-600 hover:bg-blue-700'} text-white py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-colors shadow-lg`}
-            >
-              <Twitter size={24} />
-              {t.signInWithTwitter}
-            </button>
-
-            <div className="flex items-center my-6">
-              <div className={`flex-1 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}></div>
-              <span className={`px-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{t.or}</span>
-              <div className={`flex-1 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}></div>
-            </div>
-
-            <button
-              onClick={onContinueAnonymously}
-              className={`w-full ${theme === 'dark' 
-                ? 'bg-gray-800 text-gray-200 border-gray-700 hover:border-gray-600' 
-                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'} py-4 rounded-xl font-semibold text-lg border-2 transition-colors`}
-            >
-              {t.continueAnonymously}
             </button>
           </div>
         </div>

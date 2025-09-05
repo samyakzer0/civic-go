@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Settings, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import CountUp from './CountUp';
 import { AnimatedThemeToggler } from './ui/AnimatedThemeToggler';
 import CameraButton from './ui/CameraButton';
+import NotificationIcon from './ui/NotificationIcon';
 import { getUserReports, getRecentReports, ReportData } from '../services/ReportService';
 
 interface HomePageProps {
@@ -81,15 +82,10 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
       {/* Header */}
       <div className="flex justify-between items-center p-6">
         <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>CivicGo</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <CameraButton onNavigate={onNavigate} />
           <AnimatedThemeToggler />
-          <button 
-            onClick={() => onNavigate('profile')}
-            className={`p-2 ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'} transition-colors`}
-          >
-            <Settings size={24} />
-          </button>
+          <NotificationIcon userId={userId} onNavigate={onNavigate} />
         </div>
       </div>
 

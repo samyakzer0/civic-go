@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getReportsByCategory, updateReportStatus, ReportData, getCityList } from '../../services/ReportService';
+import { updateReportStatus, getReportById, ReportData, getCityList } from '../../services/ReportService';
+import { createStatusUpdateNotification } from '../../utils/notificationUtils';
+import { getReportsByCategoryWithRealData } from '../../services/ReportServiceEnhanced';
 import { 
   ArrowDown, 
   ArrowUp, 
@@ -56,8 +58,8 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   const loadReports = async () => {
     try {
       setIsLoading(true);
-      // Case-insensitive match for the category
-      const categoryReports = await getReportsByCategory(category);
+      // Case-insensitive match for the category with real data
+      const categoryReports = await getReportsByCategoryWithRealData(category);
       console.log(`Fetched ${categoryReports.length} reports for category ${category}:`, categoryReports);
       setReports(categoryReports);
     } catch (error) {
@@ -166,11 +168,33 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
             updated_at: new Date().toISOString()
           });
         }
+
+        // Get the full report to access all details including the user_id and title
+        const report = await getReportById(reportId);
+        if (report) {
+          // Send a notification to the user who submitted the report
+          await sendStatusUpdateNotification(report, newStatus);
+        }
       }
     } catch (error) {
       console.error('Error updating report status:', error);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  // Function to send a notification about the status update
+  const sendStatusUpdateNotification = async (report: ReportData, newStatus: string) => {
+    try {
+      const success = await createStatusUpdateNotification(report, newStatus);
+      
+      if (success) {
+        console.log(`Notification sent to user ${report.user_id} about report ${report.report_id}`);
+      } else {
+        console.error(`Failed to send notification to user ${report.user_id}`);
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
     }
   };
 

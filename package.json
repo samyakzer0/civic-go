@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
+    "@lottiefiles/dotlottie-react": "^0.15.2",
     "@supabase/supabase-js": "^2.57.0",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
