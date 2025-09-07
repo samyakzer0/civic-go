@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, LogOut, Layers, Settings, Users, BarChart4, Loader2 } from 'lucide-react';
+import { ArrowLeft, LogOut, Layers, BarChart4, Loader2, TrendingUp } from 'lucide-react';
 import { getCurrentUser, signOut, getUserAdminCategories } from '../../services/supabase.ts';
 import { useTheme } from '../../contexts/ThemeContext';
 import CategoryAdmin from './CategoryAdmin';
+import AdminAnalytics from '../AdminAnalytics';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -15,6 +16,7 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
   const [userName, setUserName] = useState<string>('');
   const [adminCategories, setAdminCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [currentView, setCurrentView] = useState<'categories' | 'analytics'>('analytics'); // Default to analytics
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -77,16 +79,31 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
                 <ArrowLeft size={24} />
               </button>
             )}
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Admin Dashboard</h1>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
+                <BarChart4 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  Admin Dashboard
+                </h1>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Municipal Management Portal
+                </p>
+              </div>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {userName}
-            </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                {userName}
+              </span>
+            </div>
             <button
               onClick={handleLogout}
-              className={`p-2 rounded-full ${
+              className={`p-2 rounded-xl ${
                 theme === 'dark' 
                   ? 'text-red-400 hover:bg-red-900/30' 
                   : 'text-red-600 hover:bg-red-100'
@@ -99,124 +116,136 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
       </div>
 
       <div className="p-6 pb-24 max-w-7xl mx-auto">
-        {/* Category Selector */}
-        <div className={`mb-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-3`}>
-            <Layers size={20} className="inline-block mr-2 mb-1" />
-            Category Management
-          </h2>
-          
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-sm py-2 px-3">
-              <Loader2 size={16} className="animate-spin" />
-              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Loading categories...</span>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {adminCategories.length > 0 ? (
-                adminCategories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      selectedCategory === category
-                        ? theme === 'dark'
-                          ? 'bg-blue-700 text-white'
-                          : 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))
+        {/* Navigation Tabs */}
+        <div className={`mb-6 p-2 rounded-xl ${theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60'} backdrop-blur-xl shadow-lg border ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentView('analytics')}
+              className={`flex items-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'analytics'
+                  ? theme === 'dark'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-blue-600 text-white shadow-lg'
+                  : theme === 'dark'
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100/50'
+              }`}
+            >
+              <TrendingUp size={18} />
+              <span>Analytics Dashboard</span>
+            </button>
+            
+            <button
+              onClick={() => setCurrentView('categories')}
+              className={`flex items-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'categories'
+                  ? theme === 'dark'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-blue-600 text-white shadow-lg'
+                  : theme === 'dark'
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100/50'
+              }`}
+            >
+              <Layers size={18} />
+              <span>Category Management</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        {currentView === 'analytics' ? (
+          /* Analytics Dashboard */
+          <div>
+            <AdminAnalytics />
+          </div>
+        ) : (
+          /* Category Management */
+          <div>
+            {/* Category Selector */}
+            <div className={`mb-6 p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60'} backdrop-blur-xl shadow-lg border ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                  <Layers size={20} className="text-purple-500" />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                    Category Management
+                  </h2>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Manage reports by category
+                  </p>
+                </div>
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-sm py-3 px-4">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Loading categories...</span>
+                </div>
               ) : (
-                <div className={`text-sm py-2 px-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  No categories assigned to your admin account
+                <div className="flex flex-wrap gap-3">
+                  {adminCategories.length > 0 ? (
+                    adminCategories.map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          selectedCategory === category
+                            ? theme === 'dark'
+                              ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
+                              : 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
+                            : theme === 'dark'
+                            ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 border border-gray-600/50'
+                            : 'bg-gray-100/50 text-gray-700 hover:bg-gray-200/50 border border-gray-200/50'
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    ))
+                  ) : (
+                    <div className={`text-sm py-3 px-4 ${
+                      theme === 'dark' 
+                        ? 'text-gray-400 bg-gray-700/30' 
+                        : 'text-gray-500 bg-gray-100/30'
+                    } rounded-xl border ${
+                      theme === 'dark' ? 'border-gray-600/30' : 'border-gray-200/30'
+                    }`}>
+                      No categories assigned to your admin account
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
-        
-        {/* Dashboard Stats (placeholder) */}
-        <div className={`mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4`}>
-          <div className={`p-4 rounded-xl shadow-sm border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Total Reports</p>
-                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {isLoading ? <Loader2 size={24} className="animate-spin" /> : '128'}
-                </p>
-              </div>
-              <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                <BarChart4 size={24} className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
-              </div>
+            
+            {/* Main Content Area */}
+            <div className={`rounded-xl shadow-xl ${theme === 'dark' ? 'bg-gray-800/60 border-gray-700/50' : 'bg-white/60 border-gray-200/50'} backdrop-blur-xl border overflow-hidden`}>
+              {selectedCategory ? (
+                <CategoryAdmin category={selectedCategory} />
+              ) : (
+                <div className="text-center py-16">
+                  <div className={`w-20 h-20 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                    <Layers className={`h-10 w-10 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+                  </div>
+                  <p className={`text-lg font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
+                    {isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 size={20} className="animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select a Category'
+                    )}
+                  </p>
+                  {!isLoading && (
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                      Choose a category from above to manage reports
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-          
-          <div className={`p-4 rounded-xl shadow-sm border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Active Users</p>
-                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {isLoading ? <Loader2 size={24} className="animate-spin" /> : '42'}
-                </p>
-              </div>
-              <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'}`}>
-                <Users size={24} className={theme === 'dark' ? 'text-green-400' : 'text-green-600'} />
-              </div>
-            </div>
-          </div>
-          
-          <div className={`p-4 rounded-xl shadow-sm border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Resolved</p>
-                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {isLoading ? <Loader2 size={24} className="animate-spin" /> : '86'}
-                </p>
-              </div>
-              <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-green-900/30' : 'bg-green-100'}`}>
-                <Settings size={24} className={theme === 'dark' ? 'text-green-400' : 'text-green-600'} />
-              </div>
-            </div>
-          </div>
-          
-          <div className={`p-4 rounded-xl shadow-sm border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Pending</p>
-                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {isLoading ? <Loader2 size={24} className="animate-spin" /> : '42'}
-                </p>
-              </div>
-              <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
-                <Settings size={24} className={theme === 'dark' ? 'text-amber-400' : 'text-amber-600'} />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Main Content Area */}
-        <div className={`rounded-xl shadow-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border overflow-hidden`}>
-          {selectedCategory ? (
-            <CategoryAdmin category={selectedCategory} />
-          ) : (
-            <div className="text-center py-16">
-              <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={20} className="animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Please select a category to manage'
-                )}
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

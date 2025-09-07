@@ -15,8 +15,22 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-gray-800 to-gray-900' : 'bg-gradient-to-b from-blue-50 to-green-50'} flex flex-col`}>
       {/* Header */}
       <div className="text-center py-8 flex justify-center items-center px-6">
-        <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>CivicGo</h1>
-      </div>
+        <div className="flex items-center space-x-3">
+            <img 
+              src="/assets/images/logo.png" 
+              alt="CivicGo Logo" 
+              className="w-20 h-20 object-contain"
+              onError={(e) => {
+                // Fallback to text if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <span className={`text-lg font-bold text-white hidden`}>CG</span>
+          </div>
+        
+        </div>
 
       {/* Hero Illustration */}
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 max-w-6xl mx-auto">

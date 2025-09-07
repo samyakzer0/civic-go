@@ -7,6 +7,8 @@ import { AnimatedThemeToggler } from './ui/AnimatedThemeToggler';
 import CameraButton from './ui/CameraButton';
 import NotificationIcon from './ui/NotificationIcon';
 import { getUserReports, getRecentReports, ReportData } from '../services/ReportService';
+import { getCommunityStats, CommunityStats } from '../services/AnalyticsService';
+import IssueHeatMap from './IssueHeatMap';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -23,10 +25,21 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
   const [isLoadingReports, setIsLoadingReports] = useState(true);
   const [isLoadingUpdates, setIsLoadingUpdates] = useState(true);
   
+  // State for community statistics
+  const [communityStats, setCommunityStats] = useState<CommunityStats>({
+    totalReports: 0,
+    resolvedReports: 0,
+    activeReports: 0,
+    avgResponseTime: 2.3,
+    resolutionRate: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  
   // Fetch user reports and recent updates
   useEffect(() => {
     fetchUserReports();
     fetchRecentUpdates();
+    fetchCommunityStats();
   }, [userId]);
   
   const fetchUserReports = async () => {
@@ -50,6 +63,18 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
       console.error('Error fetching recent updates:', error);
     } finally {
       setIsLoadingUpdates(false);
+    }
+  };
+  
+  const fetchCommunityStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      const stats = await getCommunityStats();
+      setCommunityStats(stats);
+    } catch (error) {
+      console.error('Error fetching community stats:', error);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
   
@@ -81,7 +106,21 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
     }`}>
       {/* Header */}
       <div className="flex justify-between items-center p-6">
-        <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>CivicGo</h1>
+        <div className="flex items-center space-x-3">
+          
+            <img 
+              src="/assets/images/logo.png" 
+              alt="CivicGo Logo" 
+              className="w-20 h-20 object-contain"
+              onError={(e) => {
+                // Fallback to text if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <span className={`text-sm font-bold text-white hidden`}>CG</span>
+          </div>
         <div className="flex items-center space-x-3">
           <CameraButton onNavigate={onNavigate} />
           <AnimatedThemeToggler />
@@ -91,95 +130,158 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
 
       {/* Hero Section */}
       <div className="px-6 pt-8 max-w-4xl mx-auto">
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gradient-to-r from-blue-800/80 to-green-800/80' 
-            : 'bg-gradient-to-r from-green-400/90 to-blue-500/90'
-        } backdrop-blur-lg rounded-3xl p-8 text-white relative overflow-hidden border ${
-          theme === 'dark' ? 'border-gray-700/40' : 'border-white/20'
-        } shadow-2xl`}>
-          {/* Glass overlay */}
-          <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
-          
-          <div className="relative z-10 md:max-w-lg">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
-              {t.makeYourVoiceHeard}
-            </h2>
-            <p className="text-lg opacity-90 mb-8 leading-relaxed">
-              {t.welcomeToCity}
-            </p>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Main CTA Card */}
+          <div className={`${
+            theme === 'dark' 
+              ? 'bg-gradient-to-br from-blue-900/90 to-green-900/90' 
+              : 'bg-gradient-to-br from-blue-600/95 to-green-600/95'
+          } backdrop-blur-xl rounded-3xl p-8 text-white relative overflow-hidden border ${
+            theme === 'dark' ? 'border-gray-700/40' : 'border-white/20'
+          } shadow-2xl hover:shadow-3xl transition-all duration-500 group`}>
+            {/* Enhanced glass overlay with animated gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-white/10 backdrop-blur-[2px] opacity-80 group-hover:opacity-100 transition-opacity duration-500"></div>
             
-            <button
-              onClick={() => onNavigate('report')}
-              className={`${
-                theme === 'dark' 
-                  ? 'bg-white/90 text-blue-800 hover:bg-white' 
-                  : 'bg-white/90 text-blue-600 hover:bg-white'
-              } backdrop-blur-sm py-4 px-8 rounded-xl font-semibold text-lg transition-all shadow-lg w-full md:w-auto hover:shadow-xl hover:scale-[1.02]`}
-            >
-              {t.reportNewIssue}
-            </button>
+            {/* Floating decorative elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/15 backdrop-blur-lg rounded-full -translate-y-8 translate-x-8 border border-white/10 animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 backdrop-blur-sm rounded-full translate-y-8 -translate-x-8 border border-white/5"></div>
+            <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
+            
+            <div className="relative z-10">
+              <div className="mb-6">
+                <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-4">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                  <span className="text-sm font-medium text-white/90">Platform Active</span>
+                </div>
+                
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/90">
+                  {t.makeYourVoiceHeard}
+                </h2>
+                <p className="text-lg opacity-90 mb-8 leading-relaxed text-white/80">
+                  Join thousands making a difference in their communities
+                </p>
+              </div>
+              
+              <button
+                onClick={() => onNavigate('report')}
+                className={`${
+                  theme === 'dark' 
+                    ? 'bg-white/95 text-blue-900 hover:bg-white hover:text-blue-800' 
+                    : 'bg-white/95 text-blue-700 hover:bg-white hover:text-blue-600'
+                } backdrop-blur-sm py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg w-full md:w-auto hover:shadow-xl hover:scale-[1.02] group-hover:scale-[1.05] transform`}
+              >
+                <span className="flex items-center justify-center space-x-2">
+                  <span>{t.reportNewIssue}</span>
+                  <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
           </div>
-          
-          {/* Background decoration with enhanced glass effect */}
-          <div className="absolute top-0 right-0 w-36 h-36 bg-white/20 backdrop-blur-lg rounded-full -translate-y-12 translate-x-12 border border-white/10"></div>
-          <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/20 backdrop-blur-lg rounded-full translate-y-12 -translate-x-12 border border-white/10"></div>
-          <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full -translate-y-1/2 -translate-x-1/2 border border-white/5"></div>
-        </div>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="p-6 mt-8 max-w-4xl mx-auto">
-        <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t.communityImpact}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Stats Preview Card */}
           <div className={`${
             theme === 'dark' 
-              ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-              : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-          } p-6 rounded-xl shadow-lg border relative overflow-hidden group hover:scale-105 transition-transform`}>
-            {/* Decorative elements for glass effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-30"></div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/30 to-purple-500/30 rounded-xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity"></div>
+              ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50' 
+              : 'bg-white/60 backdrop-blur-xl border-gray-100/50'
+          } rounded-3xl p-8 shadow-xl border hover:shadow-2xl transition-all duration-500 relative overflow-hidden group`}>
+            {/* Glass effect decorations */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 opacity-60"></div>
+            <div className="absolute -inset-1 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
             
-            <div className="relative">
-              <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} mb-1`}>
-                <CountUp 
-                  from={0}
-                  to={347}
-                  separator=","
-                  duration={1.5}
-                  className="count-up-text"
-                />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  Live Impact
+                </h3>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Real-time</span>
+                </div>
               </div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{t.issuesResolved}</div>
+              
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                      {isLoadingStats ? (
+                        <div className="animate-pulse bg-gray-300 h-8 w-16 rounded"></div>
+                      ) : (
+                        <CountUp from={0} to={communityStats.resolvedReports} duration={2} />
+                      )}
+                    </div>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Issues Resolved</div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
+                      {isLoadingStats ? (
+                        <div className="animate-pulse bg-gray-300 h-8 w-16 rounded"></div>
+                      ) : (
+                        <CountUp from={0} to={communityStats.totalReports} duration={2} />
+                      )}
+                    </div>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total Reports</div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                      {isLoadingStats ? (
+                        <div className="animate-pulse bg-gray-300 h-8 w-16 rounded"></div>
+                      ) : (
+                        <span className="flex items-baseline">
+                          <CountUp from={0} to={communityStats.avgResponseTime} duration={2} />
+                          <span className="ml-1 text-lg">d</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg Response</div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                      {isLoadingStats ? (
+                        <div className="animate-pulse bg-gray-300 h-8 w-16 rounded"></div>
+                      ) : (
+                        <span className="flex items-baseline">
+                          <CountUp from={0} to={communityStats.resolutionRate} duration={2} />
+                          <span className="ml-1 text-lg">%</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Success Rate</div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className={`${
-            theme === 'dark' 
-              ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-              : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-          } p-6 rounded-xl shadow-lg border relative overflow-hidden group hover:scale-105 transition-transform`}>
-            {/* Decorative elements for glass effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-teal-500/10 opacity-30"></div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-green-500/30 to-teal-500/30 rounded-xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity"></div>
-            
-            <div className="relative">
-              <div className={`text-3xl font-bold flex items-baseline ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} mb-1`}>
-                <CountUp 
-                  from={0}
-                  to={2.3}
-                  duration={1.5}
-                  className="count-up-text"
-                />
-                <span className="ml-1 text-lg">d</span>
-              </div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{t.avgResponseTime}</div>
-            </div>
-          </div>
-          
-          <div className="hidden md:block"></div>
-          <div className="hidden md:block"></div>
         </div>
       </div>
 
@@ -249,6 +351,12 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
             })}
           </div>
         )}
+      </div>
+
+      {/* Issue Heat Map */}
+      <div className="p-6 max-w-4xl mx-auto">
+        <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>Issue Hotspots</h3>
+        <IssueHeatMap />
       </div>
 
       {/* Your Reports */}
