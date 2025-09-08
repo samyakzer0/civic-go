@@ -68,7 +68,7 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
-      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4 md:rounded-t-xl`}>
+      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b pt-2 pb-4 px-4 md:rounded-t-xl`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {onNavigate && (
@@ -85,11 +85,8 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
               </div>
               <div>
                 <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  Admin Dashboard
+                  Admin
                 </h1>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Municipal Management Portal
-                </p>
               </div>
             </div>
           </div>
@@ -118,7 +115,7 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
       <div className="p-6 pb-24 max-w-7xl mx-auto">
         {/* Navigation Tabs */}
         <div className={`mb-6 p-2 rounded-xl ${theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60'} backdrop-blur-xl shadow-lg border ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
-          <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <button
               onClick={() => setCurrentView('analytics')}
               className={`flex items-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
@@ -132,7 +129,8 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
               }`}
             >
               <TrendingUp size={18} />
-              <span>Analytics Dashboard</span>
+              <span className="hidden sm:inline">Analytics Dashboard</span>
+              <span className="sm:hidden">Analytics</span>
             </button>
             
             <button
@@ -148,7 +146,8 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
               }`}
             >
               <Layers size={18} />
-              <span>Category Management</span>
+              <span className="hidden sm:inline">Category Management</span>
+              <span className="sm:hidden">Categories</span>
             </button>
           </div>
         </div>

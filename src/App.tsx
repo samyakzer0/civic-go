@@ -16,7 +16,9 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { translations } from './utils/translations';
 import { getCurrentUser, signInWithGoogle, isAdmin } from './services/supabase.ts';
 // Import firebase services
-import { initializeFirebaseMessaging, requestNotificationPermission, onForegroundMessage } from './services/firebase';
+import { initializeFirebaseMessaging, requestNotificationPermissionOnGesture, onForegroundMessage } from './services/firebase';
+import { updateUserIdInReports } from './services/ReportService';
+import { updateUserIdInNotifications } from './services/EnhancedNotificationService';
 
 type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences';
 
@@ -278,12 +280,19 @@ function App() {
           const userEmail = currentUser.email;
           setUserId(userEmail);
           
+          // Update user_id in reports from anonymous ID to email
+          const anonymousId = localStorage.getItem('civicgo_anonymous_id');
+          if (anonymousId && anonymousId !== userEmail) {
+            await updateUserIdInReports(anonymousId, userEmail);
+            await updateUserIdInNotifications(anonymousId, userEmail);
+          }
+          
           // Initialize Firebase notifications
           console.log("User authenticated:", userEmail);
           
           // Initialize Firebase messaging
           await initializeFirebaseMessaging();
-          await requestNotificationPermission();
+          // Removed automatic permission request - will be handled on user gesture
           onForegroundMessage(userEmail);
         }
       } catch (error) {
@@ -293,6 +302,17 @@ function App() {
     
     setupUser();
   }, []);
+
+  const handleRequestNotifications = async () => {
+    const token = await requestNotificationPermissionOnGesture();
+    if (token) {
+      console.log('Notifications enabled');
+      // You can show a success message or update UI here
+    } else {
+      console.log('Notifications denied');
+      // You can show a message or handle denial here
+    }
+  };
   
   return (
     <ThemeProvider>

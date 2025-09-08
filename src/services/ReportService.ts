@@ -524,6 +524,37 @@ export const getRecentReports = async (limit: number = 5): Promise<ReportData[]>
   }
 };
 
+// Update user_id in reports when user signs in
+export const updateUserIdInReports = async (oldUserId: string, newUserId: string): Promise<boolean> => {
+  try {
+    // Try to update in Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('reports')
+        .update({ user_id: newUserId })
+        .eq('user_id', oldUserId);
+      
+      if (error) throw error;
+      return true;
+    }
+    
+    // Fallback to localStorage
+    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+    const updatedReports = allReports.map(report => {
+      if (report.user_id === oldUserId) {
+        return { ...report, user_id: newUserId };
+      }
+      return report;
+    });
+    
+    localStorage.setItem('civicgo_reports', JSON.stringify(updatedReports));
+    return true;
+  } catch (error) {
+    console.error('Error updating user_id in reports:', error);
+    return false;
+  }
+};
+
 // Update a report's status
 export const updateReportStatus = async (reportId: string, status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved'): Promise<boolean> => {
   try {

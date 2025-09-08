@@ -47,7 +47,7 @@ const firebaseConfig = {
      }
    };
 
-   // Request notification permission and get FCM token
+   // Request notification permission and get FCM token (only if already granted)
    export const requestNotificationPermission = async (): Promise<string | null> => {
      try {
        const isInitialized = await initializeFirebaseMessaging();
@@ -66,9 +66,27 @@ const firebaseConfig = {
          
          console.log('FCM Token:', token);
          return token;
+       } else {
+         console.log('Notification permission not granted');
+         return null;
+       }
+     } catch (error) {
+       console.error('Error requesting notification permission:', error);
+       return null;
+     }
+   };
+
+   // Request notification permission on user gesture
+   export const requestNotificationPermissionOnGesture = async (): Promise<string | null> => {
+     try {
+       const isInitialized = await initializeFirebaseMessaging();
+       
+       if (!isInitialized || !messaging) {
+         console.log('Firebase messaging not initialized or not supported');
+         return null;
        }
        
-       // Request permission
+       // Request permission (this should be called from a user gesture)
        const permission = await Notification.requestPermission();
        
        if (permission === 'granted') {
@@ -140,5 +158,6 @@ const firebaseConfig = {
    export default {
      initializeFirebaseMessaging,
      requestNotificationPermission,
+     requestNotificationPermissionOnGesture,
      onForegroundMessage
    };

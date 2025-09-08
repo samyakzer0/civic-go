@@ -109,7 +109,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
         <div className="flex items-center space-x-3">
           
             <img 
-              src="/assets/images/logo.png" 
+              src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
               alt="CivicGo Logo" 
               className="w-20 h-20 object-contain"
               onError={(e) => {

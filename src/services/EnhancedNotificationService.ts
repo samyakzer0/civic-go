@@ -552,3 +552,38 @@ export const createExampleNotifications = async (userId: string): Promise<void> 
     await createNotification(notification);
   }
 };
+
+// Update user_id in notifications when user signs in
+export const updateUserIdInNotifications = async (oldUserId: string, newUserId: string): Promise<boolean> => {
+  try {
+    // Try to update in Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ user_id: newUserId })
+        .eq('user_id', oldUserId);
+      
+      if (error) {
+        console.error('Supabase error:', error);
+      } else {
+        return true;
+      }
+    }
+    
+    // Fallback to localStorage
+    const storageData = localStorage.getItem('civicgo_notifications');
+    const allNotifications: Notification[] = JSON.parse(storageData || '[]');
+    const updatedNotifications = allNotifications.map(notification => {
+      if (notification.user_id === oldUserId) {
+        return { ...notification, user_id: newUserId };
+      }
+      return notification;
+    });
+    
+    localStorage.setItem('civicgo_notifications', JSON.stringify(updatedNotifications));
+    return true;
+  } catch (error) {
+    console.error('Error updating user_id in notifications:', error);
+    return false;
+  }
+};

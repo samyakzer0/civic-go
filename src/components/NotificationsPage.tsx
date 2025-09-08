@@ -6,7 +6,7 @@ import { translations } from '../utils/translations';
 import { 
   deleteNotification,
   Notification 
-} from '../services/NotificationService';
+} from '../services/EnhancedNotificationService';
 
 interface NotificationsPageProps {
   onNavigate: (page: string) => void;

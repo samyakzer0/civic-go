@@ -17,7 +17,7 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
       <div className="text-center py-8 flex justify-center items-center px-6">
         <div className="flex items-center space-x-3">
             <img 
-              src="/assets/images/logo.png" 
+              src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
               alt="CivicGo Logo" 
               className="w-20 h-20 object-contain"
               onError={(e) => {
@@ -37,7 +37,10 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
         <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1/2">
           <div className="w-full h-64 md:h-96 rounded-2xl shadow-lg overflow-hidden">
             <DotLottieReact
-              src="https://lottie.host/ca2cf854-2b75-4fc5-8638-8ac8b9cc9c88/67uGha99NN.lottie"
+              src={theme === 'dark' 
+                ? "https://lottie.host/ca2cf854-2b75-4fc5-8638-8ac8b9cc9c88/67uGha99NN.lottie"
+                : "https://lottie.host/10a38492-0121-49e4-8d2a-f91263ea7e6f/CdeHlMBQuw.lottie"
+              }
               loop
               autoplay
               className="w-full h-full"
