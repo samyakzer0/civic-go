@@ -10,6 +10,7 @@ import AdminPage from './components/AdminPage';
 import NotificationsPage from './components/NotificationsPage';
 import NotificationsHistoryPage from './components/NotificationsHistoryPage';
 import NotificationPreferencesPage from './components/NotificationPreferencesPage';
+import GeocodingTest from './components/GeocodingTest';
 import NotificationCenter from './components/NotificationCenter';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -20,7 +21,7 @@ import { initializeFirebaseMessaging, requestNotificationPermissionOnGesture, on
 import { updateUserIdInReports } from './services/ReportService';
 import { updateUserIdInNotifications } from './services/EnhancedNotificationService';
 
-type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences';
+type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences' | 'geocoding-test';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
@@ -178,6 +179,8 @@ function AppContent() {
         return <NotificationsHistoryPage onNavigate={handleNavigate} userId={userId} />;
       case 'notification-preferences':
         return <NotificationPreferencesPage onNavigate={handleNavigate} userId={userId} />;
+      case 'geocoding-test':
+        return <GeocodingTest />;
       default:
         return <HomePage onNavigate={handleNavigate} />;
     }

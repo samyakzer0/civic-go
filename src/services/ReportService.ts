@@ -1,5 +1,6 @@
 import { supabase } from './supabase.ts';
 import { v4 as uuidv4 } from 'uuid';
+import { reverseGeocode } from './GeocodingService';
 
 // List of major cities for mock data
 export const majorCities = [
@@ -107,48 +108,25 @@ export const getCurrentLocation = (): Promise<{ lat: number, lng: number, addres
       reject(new Error('Geolocation is not supported by your browser'));
       return;
     }
-    
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          // Try to get address using Google Maps API if available
-          const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-          if (googleMapsApiKey) {
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.coords.latitude},${position.coords.longitude}&key=${googleMapsApiKey}`
-            );
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              // Extract city from address components
-              let city = "Unknown";
-              if (data.results[0].address_components) {
-                for (const component of data.results[0].address_components) {
-                  if (component.types.includes('locality') || 
-                      component.types.includes('administrative_area_level_2')) {
-                    city = component.long_name;
-                    break;
-                  }
-                }
-              }
-              
-              resolve({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-                address: data.results[0].formatted_address,
-                city: city
-              });
-              return;
-            }
-          }
-          
-          // Fallback to just coordinates
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          // Use our free geocoding service instead of Google Maps
+          console.log('Getting location using free geocoding service...');
+          const geocodeResult = await reverseGeocode(lat, lng);
+
           resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            address: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`,
-            city: "Unknown"
+            lat: lat,
+            lng: lng,
+            address: geocodeResult.address,
+            city: geocodeResult.city
           });
         } catch (error) {
+          console.warn('Geocoding failed, using coordinates only:', error);
           // If geocoding fails, still return the coordinates
           resolve({
             lat: position.coords.latitude,
