@@ -112,7 +112,13 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
             <img 
               src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
               alt="CivicGo Logo" 
-              className="w-20 h-20 object-contain"
+              className="w-20 h-20 object-contain cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => {
+                // Store the logo image for the report page
+                const logoSrc = theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png";
+                localStorage.setItem('capturedImage', logoSrc);
+                onNavigate('report');
+              }}
               onError={(e) => {
                 // Fallback to text if image fails to load
                 const target = e.target as HTMLImageElement;
@@ -345,13 +351,31 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                   <div className={`absolute inset-0 bg-gradient-to-r ${bgColorClass} opacity-30`}></div>
                   <div className={`absolute -inset-1 bg-gradient-to-r ${bgColorClass.replace('/10', '/20')} rounded-xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity`}></div>
                   
-                  <div className="relative">
-                    <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                      {update.title.length > 30 ? update.title.substring(0, 30) + '...' : update.title}
-                    </div>
-                    <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {update.status} • {formatTimeAgo(update.updated_at)}
-                      {update.city && <span className="block">{update.city}</span>}
+                  <div className="relative flex items-center space-x-4">
+                    {/* Report Image */}
+                    {update.image_url && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={update.image_url}
+                          alt="Report"
+                          className="w-12 h-12 object-cover rounded-lg border-2 border-white/20 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the parent onClick
+                            localStorage.setItem('capturedImage', update.image_url);
+                            onNavigate('report');
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    <div>
+                      <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                        {update.title.length > 30 ? update.title.substring(0, 30) + '...' : update.title}
+                      </div>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {update.status} • {formatTimeAgo(update.updated_at)}
+                        {update.city && <span className="block">{update.city}</span>}
+                      </div>
                     </div>
                   </div>
                   <div className={`w-3 h-3 ${statusColor} rounded-full shadow-lg shadow-${statusColor}/30 relative z-10`}></div>
@@ -453,34 +477,52 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                   <div className={`absolute inset-0 bg-gradient-to-r ${bgColorClass} opacity-30`}></div>
                   <div className={`absolute -inset-1 bg-gradient-to-r ${bgColorClass.replace('/10', '/20')} rounded-xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity`}></div>
                   
-                  <div className="relative">
-                    <div className="flex items-center justify-between">
-                      <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                        {report.title.length > 40 ? report.title.substring(0, 40) + '...' : report.title}
+                  <div className="relative flex items-start space-x-4">
+                    {/* Report Image */}
+                    {report.image_url && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={report.image_url}
+                          alt="Report"
+                          className="w-16 h-16 object-cover rounded-lg border-2 border-white/20 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the parent onClick
+                            localStorage.setItem('capturedImage', report.image_url);
+                            onNavigate('report');
+                          }}
+                        />
                       </div>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {formatTimeAgo(report.created_at)}
+                    )}
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                          {report.title.length > 40 ? report.title.substring(0, 40) + '...' : report.title}
+                        </div>
+                        <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {formatTimeAgo(report.created_at)}
+                        </div>
                       </div>
-                    </div>
-                    <div className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {report.description.length > 80 ? report.description.substring(0, 80) + '...' : report.description}
-                    </div>
-                    <div className="mt-3 flex items-center flex-wrap gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass} backdrop-blur-sm shadow-sm`}>
-                        {report.status}
-                      </span>
-                      {report.city && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {report.city}
-                          </span>
-                        </>
-                      )}
-                      <span className="text-gray-400">•</span>
-                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Ref: #{report.report_id}
-                      </span>
+                      <div className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {report.description.length > 80 ? report.description.substring(0, 80) + '...' : report.description}
+                      </div>
+                      <div className="mt-3 flex items-center flex-wrap gap-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass} backdrop-blur-sm shadow-sm`}>
+                          {report.status}
+                        </span>
+                        {report.city && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {report.city}
+                            </span>
+                          </>
+                        )}
+                        <span className="text-gray-400">•</span>
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Ref: #{report.report_id}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -159,6 +159,7 @@ function AppContent() {
         return (
           <WelcomePage
             onSignIn={handleSignIn}
+            onNavigate={handleNavigate}
           />
         );
       case 'home':

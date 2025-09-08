@@ -5,9 +5,10 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface WelcomePageProps {
   onSignIn: (provider: string) => void;
+  onNavigate?: (page: string) => void;
 }
 
-function WelcomePage({ onSignIn }: WelcomePageProps) {
+function WelcomePage({ onSignIn, onNavigate }: WelcomePageProps) {
   const { theme, language } = useTheme();
   const t = translations[language];
 
@@ -19,7 +20,15 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
             <img 
               src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
               alt="CivicGo Logo" 
-              className="w-20 h-20 object-contain"
+              className="w-20 h-20 object-contain cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => {
+                if (onNavigate) {
+                  // Store the logo image for the report page
+                  const logoSrc = theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png";
+                  localStorage.setItem('capturedImage', logoSrc);
+                  onNavigate('report');
+                }
+              }}
               onError={(e) => {
                 // Fallback to text if image fails to load
                 const target = e.target as HTMLImageElement;
