@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Bell, Mail, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
-import { 
-  getUserNotificationPreferences, 
+import {
+  getUserNotificationPreferences,
   saveUserNotificationPreferences,
   NotificationPreferences
 } from '../services/EnhancedNotificationService';
+import Loader from './Loader';
 
 interface NotificationPreferencesPageProps {
   onNavigate: (page: string) => void;
@@ -101,9 +102,7 @@ function NotificationPreferencesPage({ onNavigate, userId }: NotificationPrefere
       <div className="p-4">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${
-              theme === 'dark' ? 'border-blue-400' : 'border-blue-600'
-            }`}></div>
+            <Loader size="medium" message="Loading preferences..." />
           </div>
         ) : preferences ? (
           <div className="space-y-6">

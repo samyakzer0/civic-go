@@ -1,7 +1,8 @@
 import React from 'react';
-import { Loader2, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
+import Loader from './Loader';
 
 interface AIAnalysisProps {
   isAnalyzing: boolean;
@@ -21,21 +22,14 @@ function AIAnalysis({ isAnalyzing, result, onAccept, onReject }: AIAnalysisProps
 
   if (isAnalyzing) {
     return (
-      <div 
+      <div
         className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 flex items-center justify-center`}
         style={{ minHeight: '100px' }}
       >
-        <div className="flex flex-col items-center text-center">
-          <Loader2 className={`h-8 w-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} animate-spin mb-2`} />
-          <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
-            {t.analyzing}
-          </p>
-        </div>
+        <Loader size="small" message={t.analyzing} showMessage={true} />
       </div>
     );
-  }
-
-  if (!result) {
+  }  if (!result) {
     return null;
   }
 

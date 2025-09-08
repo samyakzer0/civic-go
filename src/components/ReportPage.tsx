@@ -78,6 +78,16 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
       }, 500); // Small delay to ensure component is fully mounted
     }
     
+    // Check if there's a captured image from the camera button
+    const capturedImageData = localStorage.getItem('capturedImage');
+    if (capturedImageData) {
+      setImage(capturedImageData);
+      localStorage.removeItem('capturedImage'); // Clear it after loading
+      
+      // Analyze the captured image with AI
+      analyzeWithAI(capturedImageData);
+    }
+    
     // Try to get user's current location when component mounts
     fetchCurrentLocation();
     

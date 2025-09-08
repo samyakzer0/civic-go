@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { 
-  getCommunityStats, 
-  getCategoryStats, 
-  getLocationStats, 
+import {
+  getCommunityStats,
+  getCategoryStats,
+  getLocationStats,
   getStatusStats,
   CommunityStats,
   CategoryStats,
-  LocationStats 
+  LocationStats
 } from '../services/AnalyticsService';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
 } from 'recharts';
-import { 
+import {
   TrendingUp, Users, MapPin, Clock, AlertCircle, CheckCircle,
   BarChart3, PieChart as PieChartIcon, Activity, Calendar,
   Target, Zap, Award, Globe
 } from 'lucide-react';
+import Loader from './Loader';
 
 interface AdminAnalyticsProps {
   className?: string;
@@ -92,21 +93,14 @@ function AdminAnalytics({ className = '' }: AdminAnalyticsProps) {
   if (isLoading) {
     return (
       <div className={`${
-        theme === 'dark' 
-          ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50' 
+        theme === 'dark'
+          ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50'
           : 'bg-white/60 backdrop-blur-xl border-gray-100/50'
       } rounded-2xl shadow-xl border p-8 ${className}`}>
-        <div className="flex items-center justify-center space-x-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-            Loading analytics...
-          </span>
-        </div>
+        <Loader size="small" message="Loading analytics..." />
       </div>
     );
-  }
-
-  return (
+  }  return (
     <div className={`space-y-6 ${className}`}>
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

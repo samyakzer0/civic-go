@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import { getUserReports, ReportData } from '../services/ReportService';
+import Loader from './Loader';
 
 interface StatusPageProps {
   onNavigate: (page: string) => void;
@@ -181,7 +182,7 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
       <div className="p-6 pb-24 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <Loader size="medium" message="Loading your reports..." />
           </div>
         ) : filteredReports.length === 0 ? (
           <div className="text-center py-12">

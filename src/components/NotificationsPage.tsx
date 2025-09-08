@@ -3,10 +3,11 @@ import { ChevronLeft, Trash2, CheckCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { translations } from '../utils/translations';
-import { 
+import {
   deleteNotification,
-  Notification 
+  Notification
 } from '../services/EnhancedNotificationService';
+import Loader from './Loader';
 
 interface NotificationsPageProps {
   onNavigate: (page: string) => void;
@@ -149,9 +150,7 @@ function NotificationsPage({ onNavigate, userId }: NotificationsPageProps) {
       <div className="pb-24">
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${
-              theme === 'dark' ? 'border-blue-400' : 'border-blue-600'
-            }`}></div>
+            <Loader size="medium" message="Loading notifications..." />
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className={`flex flex-col items-center justify-center py-12 px-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>

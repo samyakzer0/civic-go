@@ -9,6 +9,7 @@ import {
   deleteNotification,
   Notification
 } from '../services/EnhancedNotificationService';
+import Loader from './Loader';
 
 interface NotificationsHistoryPageProps {
   onNavigate: (page: string) => void;
@@ -288,9 +289,7 @@ function NotificationsHistoryPage({ onNavigate, userId }: NotificationsHistoryPa
         <div>
           {isLoading && notifications.length === 0 ? (
             <div className="flex justify-center items-center py-20">
-              <div className={`animate-spin rounded-full h-10 w-10 border-4 border-t-transparent ${
-                theme === 'dark' ? 'border-blue-400' : 'border-blue-600'
-              }`}></div>
+              <Loader size="medium" message="Loading notifications..." />
             </div>
           ) : error ? (
             <div className={`text-center py-10 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>

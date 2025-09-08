@@ -3,18 +3,19 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { updateReportStatus, getReportById, ReportData, getCityList } from '../../services/ReportService';
 import { createStatusUpdateNotification } from '../../utils/notificationUtils';
 import { getReportsByCategoryWithRealData } from '../../services/ReportServiceEnhanced';
-import { 
-  ArrowDown, 
-  ArrowUp, 
-  CheckCircle, 
-  Clock, 
-  ExternalLink, 
-  Filter, 
-  RefreshCw, 
-  Search, 
+import {
+  ArrowDown,
+  ArrowUp,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Filter,
+  RefreshCw,
+  Search,
   Send,
   MapPin
 } from 'lucide-react';
+import Loader from '../Loader';
 
 interface CategoryAdminProps {
   category: string;
@@ -349,7 +350,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <Loader size="medium" message="Loading reports..." />
         </div>
       ) : (
         <>

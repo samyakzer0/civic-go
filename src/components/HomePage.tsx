@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import CountUp from './CountUp';
@@ -9,6 +8,8 @@ import NotificationIcon from './ui/NotificationIcon';
 import { getUserReports, getRecentReports, ReportData } from '../services/ReportService';
 import { getCommunityStats, CommunityStats } from '../services/AnalyticsService';
 import IssueHeatMap from './IssueHeatMap';
+import AnimatedBackground from './AnimatedBackground';
+import Loader from './Loader';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -133,31 +134,39 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Main CTA Card */}
           <div className={`${
-            theme === 'dark' 
-              ? 'bg-gradient-to-br from-blue-900/90 to-green-900/90' 
-              : 'bg-gradient-to-br from-blue-600/95 to-green-600/95'
-          } backdrop-blur-xl rounded-3xl p-8 text-white relative overflow-hidden border ${
-            theme === 'dark' ? 'border-gray-700/40' : 'border-white/20'
+            theme === 'dark'
+              ? 'bg-gray-800/90'
+              : 'bg-white/95'
+          } backdrop-blur-xl rounded-3xl p-8 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          } relative overflow-hidden border ${
+            theme === 'dark' ? 'border-gray-700/40' : 'border-gray-200/50'
           } shadow-2xl hover:shadow-3xl transition-all duration-500 group`}>
-            {/* Enhanced glass overlay with animated gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/5 to-white/10 backdrop-blur-[2px] opacity-80 group-hover:opacity-100 transition-opacity duration-500"></div>
-            
-            {/* Floating decorative elements */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/15 backdrop-blur-lg rounded-full -translate-y-8 translate-x-8 border border-white/10 animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 backdrop-blur-sm rounded-full translate-y-8 -translate-x-8 border border-white/5"></div>
-            <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
+            {/* Animated Background - Only LottieFile Animation */}
+            <AnimatedBackground
+              intensity="medium"
+              className="pointer-events-none"
+            />
             
             <div className="relative z-10">
               <div className="mb-6">
                 <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-4">
                   <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                  <span className="text-sm font-medium text-white/90">Platform Active</span>
+                  <span className={`text-sm font-medium ${
+                    theme === 'dark' ? 'text-white/90' : 'text-gray-700'
+                  }`}>Platform Active</span>
                 </div>
                 
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/90">
+                <h2 className={`text-3xl md:text-4xl font-bold mb-4 leading-tight ${
+                  theme === 'dark' 
+                    ? 'bg-clip-text text-transparent bg-gradient-to-r from-white to-white/90' 
+                    : 'text-gray-900'
+                }`}>
                   {t.makeYourVoiceHeard}
                 </h2>
-                <p className="text-lg opacity-90 mb-8 leading-relaxed text-white/80">
+                <p className={`text-lg opacity-90 mb-8 leading-relaxed ${
+                  theme === 'dark' ? 'text-white/80' : 'text-gray-700'
+                }`}>
                   Join thousands making a difference in their communities
                 </p>
               </div>
@@ -166,8 +175,8 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                 onClick={() => onNavigate('report')}
                 className={`${
                   theme === 'dark' 
-                    ? 'bg-white/95 text-blue-900 hover:bg-white hover:text-blue-800' 
-                    : 'bg-white/95 text-blue-700 hover:bg-white hover:text-blue-600'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
                 } backdrop-blur-sm py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg w-full md:w-auto hover:shadow-xl hover:scale-[1.02] group-hover:scale-[1.05] transform`}
               >
                 <span className="flex items-center justify-center space-x-2">
@@ -291,7 +300,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
         
         {isLoadingUpdates ? (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className={`animate-spin h-8 w-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Loader size="small" message="Loading recent updates..." />
           </div>
         ) : recentUpdates.length === 0 ? (
           <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -373,7 +382,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
         
         {isLoadingReports ? (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className={`animate-spin h-8 w-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Loader size="small" message="Loading your reports..." />
           </div>
         ) : userReports.length === 0 ? (
           <div className="space-y-4">
