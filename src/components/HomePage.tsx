@@ -102,7 +102,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
     <div className={`min-h-screen ${
       theme === 'dark' 
         ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-b from-amber-50 via-green-50 to-blue-50'
+        : 'bg-gray-50'
     }`}>
       {/* Header */}
       <div className="flex justify-between items-center p-6">

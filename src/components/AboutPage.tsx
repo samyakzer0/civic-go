@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
@@ -31,7 +30,7 @@ function AboutPage({ onNavigate }: AboutPageProps) {
       <div className="p-6 pb-24 max-w-4xl mx-auto">
         {/* Hero Section */}
         <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl overflow-hidden shadow-lg mb-8`}>
-          <div className="h-48 bg-gradient-to-r from-blue-500 to-green-500 relative overflow-hidden">
+          <div className={`h-48 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} relative overflow-hidden`}>
             <div className="absolute inset-0 opacity-20 bg-pattern"></div>
           </div>
           <div className="p-6">

@@ -12,7 +12,7 @@ function WelcomePage({ onSignIn }: WelcomePageProps) {
   const t = translations[language];
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-gray-800 to-gray-900' : 'bg-gradient-to-b from-blue-50 to-green-50'} flex flex-col`}>
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-gray-800 to-gray-900' : 'bg-gray-50'} flex flex-col`}>
       {/* Header */}
       <div className="text-center py-8 flex justify-center items-center px-6">
         <div className="flex items-center space-x-3">
