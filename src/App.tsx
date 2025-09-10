@@ -191,7 +191,7 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className={`w-full mx-auto ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} min-h-screen relative max-w-full sm:max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl md:shadow-xl md:my-8 md:rounded-t-xl md:rounded-b-xl overflow-hidden`}>
+      <div className={`w-full mx-auto ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} min-h-screen relative max-w-full sm:max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl md:shadow-xl md:rounded-t-xl md:rounded-b-xl overflow-hidden`}>
         {renderPage()}
         
         {showNavigation && (

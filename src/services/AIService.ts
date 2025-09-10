@@ -1,52 +1,31 @@
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-backend-webgl'; // For better performance
+/**
+ * AI Image Analysis Service using Perplexity Pro API
+ * Perplexity Pro offers excellent vision capabilities for civic infrastructure analysis
+ */
 
 // Interface for AI analysis result
-interface AIAnalysisResult {
+export interface AIAnalysisResult {
   title: string;
   category: string;
   description: string;
   confidence: number;
 }
 
-// Load the MobileNet model (runs locally in browser)
-let model: tf.LayersModel | null = null;
-let modelLoading = false;
+// Perplexity API configuration
+const PERPLEXITY_API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
+const PERPLEXITY_API_BASE = 'https://api.perplexity.ai/chat/completions';
 
-async function loadModel() {
-  if (model !== null) return model;
-  if (modelLoading) {
-    // Wait for the model to load if it's already loading
-    while (modelLoading) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return model;
-  }
-  
-  try {
-    modelLoading = true;
-    console.log('Loading TensorFlow.js MobileNet model...');
-    // Use MobileNet - a lightweight model that works well for general image recognition
-    model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
-    console.log('TensorFlow.js model loaded successfully');
-    return model;
-  } catch (error) {
-    console.error('Error loading TensorFlow.js model:', error);
-    throw error;
-  } finally {
-    modelLoading = false;
-  }
-}
-
-// Class names for MobileNet (ImageNet labels)
-import { IMAGENET_CLASSES } from './imagenet_classes.js';
-
-// Using TensorFlow.js to run inference locally in the browser
+// Main image analysis function using Perplexity Pro API
 export const analyzeImage = async (imageData: string): Promise<AIAnalysisResult> => {
   try {
+    // Check if API key is provided
+    if (!PERPLEXITY_API_KEY || PERPLEXITY_API_KEY === 'your_perplexity_api_key_here') {
+      console.warn('Perplexity API key not provided. Using fallback analysis.');
+      return fallbackAnalysis(imageData);
+    }
+
     // Check if we should force fallback for testing
     const forceFallback = import.meta.env.VITE_FORCE_AI_FALLBACK === 'true';
-    
     if (forceFallback) {
       console.warn('Fallback forced. Using mock analysis.');
       const mockResult = fallbackAnalysis(imageData);
@@ -54,227 +33,164 @@ export const analyzeImage = async (imageData: string): Promise<AIAnalysisResult>
       return mockResult;
     }
 
-    console.log('Starting TensorFlow.js image analysis...');
-    
-    // Load image
-    const image = await loadImageFromDataUrl(imageData);
-    
-    // Load model if not already loaded
-    const tfModel = await loadModel();
-    
-    if (!tfModel) {
-      throw new Error('Failed to load TensorFlow.js model');
+    console.log('Starting Perplexity Pro image analysis...');
+
+    // Create a detailed prompt for civic infrastructure analysis
+    const systemPrompt = `You are an expert AI assistant specialized in analyzing civic infrastructure images. Your task is to identify and categorize civic issues from uploaded photos.
+
+Analyze the image and respond with a JSON object containing:
+1. "title": A clear, concise title describing the main issue (max 50 characters)
+2. "category": Must be one of: "Water", "Electricity", "Roads", "Sanitation", "Infrastructure", or "Others"
+3. "description": A detailed description of the issue and its potential impact (max 200 characters)
+4. "confidence": A number between 0 and 1 representing your confidence in the analysis
+
+Category Guidelines:
+- Water: Pipe leaks, flooding, drainage issues, water infrastructure
+- Electricity: Street lights, power lines, electrical infrastructure
+- Roads: Potholes, road damage, sidewalk issues, traffic infrastructure
+- Sanitation: Garbage accumulation, waste management, cleanliness issues
+- Infrastructure: Buildings, bridges, public structures, general construction
+- Others: Issues that don't fit the above categories
+
+Focus on identifying problems, damages, or maintenance needs that would require municipal attention.
+
+Respond ONLY with the JSON object, no additional text.`;
+
+    // Prepare the API request
+    const requestBody = {
+      model: "sonar-pro",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Please analyze this civic infrastructure image and identify any issues that require municipal attention."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData
+              }
+            }
+          ]
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1000
+    };
+
+    // Make API call to Perplexity
+    const response = await fetch(PERPLEXITY_API_BASE, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Extract the response content
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Invalid response format from Perplexity API');
+    }
+
+    // Parse the JSON response
+    let result: AIAnalysisResult;
+    try {
+      // Clean the response in case there's any extra text
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      const parsedResult = JSON.parse(jsonStr);
+      
+      result = {
+        title: parsedResult.title || 'Civic Issue Detected',
+        category: parsedResult.category || 'Others',
+        description: parsedResult.description || 'An issue was detected that requires municipal attention.',
+        confidence: parsedResult.confidence || 0.8
+      };
+    } catch (parseError) {
+      console.error('Error parsing Perplexity response:', parseError);
+      // Fallback to processing the text response
+      result = processTextResponse(content);
     }
     
-    // Preprocess image for the model
-    const tensorImg = preprocessImage(image);
-    
-    // Run prediction
-    const predictions = await runInference(tfModel, tensorImg);
-    
-    // Process TensorFlow.js results
-    const result = processTensorflowResults(predictions);
-    console.log('Processed AI result:', result);
-    
-    // Clean up tensors to prevent memory leaks
-    tf.dispose(tensorImg);
-    
+    console.log('Perplexity analysis completed:', result);
     return result;
+
   } catch (error) {
-    console.error('Error analyzing image with TensorFlow.js:', error);
-    // Fallback to mock analysis if TensorFlow.js fails
+    console.error('Error analyzing image with Perplexity:', error);
     console.log('Falling back to mock analysis due to error');
     return fallbackAnalysis(imageData);
   }
 };
 
-// Load image from data URL
-async function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = (err) => reject(err);
-    img.src = dataUrl;
-  });
-}
-
-// Preprocess image to match model requirements
-function preprocessImage(img: HTMLImageElement) {
-  // MobileNet expects 224x224 images
-  const targetSize = 224;
+/**
+ * Process text response from Perplexity when JSON parsing fails
+ */
+function processTextResponse(content: string): AIAnalysisResult {
+  // Extract key information from the text response
+  const lowerContent = content.toLowerCase();
   
-  // Create a canvas to resize the image
-  const canvas = document.createElement('canvas');
-  canvas.width = targetSize;
-  canvas.height = targetSize;
-  const ctx = canvas.getContext('2d');
-  
-  if (!ctx) {
-    throw new Error('Could not get canvas context');
+  // Determine category based on keywords
+  let category = 'Others';
+  if (lowerContent.includes('water') || lowerContent.includes('leak') || lowerContent.includes('pipe') || lowerContent.includes('flood')) {
+    category = 'Water';
+  } else if (lowerContent.includes('light') || lowerContent.includes('electric') || lowerContent.includes('power') || lowerContent.includes('wire')) {
+    category = 'Electricity';
+  } else if (lowerContent.includes('road') || lowerContent.includes('pothole') || lowerContent.includes('street') || lowerContent.includes('pavement')) {
+    category = 'Roads';
+  } else if (lowerContent.includes('garbage') || lowerContent.includes('trash') || lowerContent.includes('waste') || lowerContent.includes('sanitation')) {
+    category = 'Sanitation';
+  } else if (lowerContent.includes('building') || lowerContent.includes('bridge') || lowerContent.includes('construction') || lowerContent.includes('structure')) {
+    category = 'Infrastructure';
   }
+
+  // Generate title based on category
+  const title = generateTitleFromCategory(category);
   
-  // Draw resized image to canvas
-  ctx.drawImage(img, 0, 0, targetSize, targetSize);
-  
-  // Get image data and convert to tensor
-  const tensor = tf.browser.fromPixels(canvas)
-    .toFloat()
-    .sub(127.5)  // Subtract mean
-    .div(127.5)  // Normalize to [-1, 1]
-    .expandDims(0); // Add batch dimension
-    
-  return tensor;
+  // Use the content as description, truncated if necessary
+  const description = content.length > 200 ? content.substring(0, 197) + '...' : content;
+
+  return {
+    title,
+    category,
+    description,
+    confidence: 0.7
+  };
 }
 
-// Run inference with TensorFlow.js
-async function runInference(model: tf.LayersModel, tensorImg: tf.Tensor) {
-  // Run prediction
-  const logits = model.predict(tensorImg) as tf.Tensor;
-  const probabilities = tf.softmax(logits);
+/**
+ * Generate appropriate title based on category
+ */
+function generateTitleFromCategory(category: string): string {
+  const titles: { [key: string]: string[] } = {
+    'Water': ['Water Issue Detected', 'Plumbing Problem', 'Water Infrastructure Issue'],
+    'Electricity': ['Electrical Issue', 'Street Light Problem', 'Power Infrastructure Issue'],
+    'Roads': ['Road Damage', 'Street Condition Issue', 'Pavement Problem'],
+    'Sanitation': ['Waste Management Issue', 'Sanitation Problem', 'Cleanliness Concern'],
+    'Infrastructure': ['Building Issue', 'Structural Problem', 'Infrastructure Concern'],
+    'Others': ['Civic Issue Detected', 'Municipal Attention Required', 'Infrastructure Concern']
+  };
   
-  // Get top 5 predictions
-  const values = await probabilities.data();
-  const indices = Array.from(values).map((_, i) => i);
-  indices.sort((a, b) => values[b] - values[a]);
-  
-  const topPredictions = indices.slice(0, 5).map(idx => {
-    return {
-      className: IMAGENET_CLASSES[idx],
-      probability: values[idx]
-    };
-  });
-  
-  // Clean up tensors
-  tf.dispose([logits, probabilities]);
-  
-  return topPredictions;
+  const categoryTitles = titles[category] || titles['Others'];
+  return categoryTitles[Math.floor(Math.random() * categoryTitles.length)];
 }
 
-function processTensorflowResults(predictions: Array<{className: string, probability: number}>): AIAnalysisResult {
-  try {
-    // Map detected objects/labels to civic categories
-    const categoryMapping: Record<string, string> = {
-      // Water related
-      'water': 'Water',
-      'lake': 'Water',
-      'fountain': 'Water',
-      'waterfall': 'Water',
-      'puddle': 'Water',
-      'flood': 'Water',
-      'pipe': 'Water',
-      'plumbing': 'Water',
-      
-      // Electricity related
-      'light': 'Electricity',
-      'lamp': 'Electricity',
-      'bulb': 'Electricity',
-      'streetlight': 'Electricity',
-      'pole': 'Electricity',
-      'wire': 'Electricity',
-      'electric': 'Electricity',
-      'power': 'Electricity',
-      
-      // Infrastructure related
-      'road': 'Roads',
-      'street': 'Roads',
-      'highway': 'Roads',
-      'path': 'Roads',
-      'sidewalk': 'Roads',
-      'pavement': 'Roads',
-      'building': 'Infrastructure',
-      'bridge': 'Infrastructure',
-      'construction': 'Infrastructure',
-      'wall': 'Infrastructure',
-      
-      // Sanitation related
-      'garbage': 'Sanitation',
-      'trash': 'Sanitation',
-      'waste': 'Sanitation',
-      'litter': 'Sanitation',
-      'bin': 'Sanitation',
-      'dump': 'Sanitation',
-      'debris': 'Sanitation',
-      'dirty': 'Sanitation'
-    };
-    
-    // Find the most likely civic category based on classifications
-    let bestCategory = 'Others';
-    let bestCategoryScore = 0;
-    
-    for (const prediction of predictions) {
-      const label = prediction.className.toLowerCase();
-      const score = prediction.probability;
-      
-      for (const [keyword, category] of Object.entries(categoryMapping)) {
-        if (label.includes(keyword) || keyword.includes(label)) {
-          if (score > bestCategoryScore) {
-            bestCategory = category;
-            bestCategoryScore = score;
-          }
-        }
-      }
-    }
-    
-    // Generate a title based on the category and top classification
-    let title = '';
-    const topLabel = predictions[0]?.className || '';
-    
-    if (bestCategory === 'Water') {
-      if (topLabel.toLowerCase().includes('leak') || topLabel.toLowerCase().includes('pipe')) {
-        title = 'Water Leakage';
-      } else if (topLabel.toLowerCase().includes('flood')) {
-        title = 'Water Flooding';
-      } else {
-        title = 'Water Issue';
-      }
-    } else if (bestCategory === 'Electricity') {
-      if (topLabel.toLowerCase().includes('light') || topLabel.toLowerCase().includes('lamp')) {
-        title = 'Streetlight Issue';
-      } else if (topLabel.toLowerCase().includes('power')) {
-        title = 'Power Issue';
-      } else {
-        title = 'Electrical Problem';
-      }
-    } else if (bestCategory === 'Roads') {
-      if (topLabel.toLowerCase().includes('pothole')) {
-        title = 'Road Pothole';
-      } else {
-        title = 'Road Issue';
-      }
-    } else if (bestCategory === 'Sanitation') {
-      if (topLabel.toLowerCase().includes('garbage') || topLabel.toLowerCase().includes('trash')) {
-        title = 'Garbage Disposal Issue';
-      } else {
-        title = 'Sanitation Problem';
-      }
-    } else {
-      title = 'Infrastructure Issue';
-    }
-    
-    // Generate a description based on the predictions
-    const labelDescriptions = predictions.map(p => `${p.className} (${(p.probability * 100).toFixed(1)}%)`);
-    const description = `AI detected: ${labelDescriptions.join(', ')}`;
-    
-    return {
-      title,
-      category: bestCategory,
-      description,
-      confidence: predictions[0]?.probability || 0.8
-    };
-  } catch (error) {
-    console.error('Error processing TensorFlow.js results:', error);
-    // Return a generic result if parsing fails
-    return {
-      title: 'Civic Issue Detected',
-      category: 'Others',
-      description: 'An issue was detected but could not be classified automatically. Please provide more details.',
-      confidence: 0.5
-    };
-  }
-}
-
-// Fallback mock analysis for when TensorFlow.js is unavailable or fails
+/**
+ * Fallback mock analysis for when Perplexity API is unavailable or fails
+ */
 function fallbackAnalysis(imageData: string): AIAnalysisResult {
   // Simple mock implementation that uses image data length as a deterministic way to choose responses
   const mockResponses = [
