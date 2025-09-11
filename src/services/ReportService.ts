@@ -1,5 +1,4 @@
 import { supabase } from './supabase.ts';
-import { v4 as uuidv4 } from 'uuid';
 import { reverseGeocode } from './GeocodingService';
 
 // List of major cities for mock data
@@ -24,11 +23,28 @@ export interface ReportData {
     address: string;
   };
   city: string; // Add city field
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent'; // Add priority field
   image_url: string;
   status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved';
   created_at: string;
   updated_at: string;
   user_id: string;
+}
+
+// Task data model
+export interface TaskData {
+  id?: string;
+  report_id: string;
+  task_description: string;
+  assigned_by: string;
+  assigned_to?: string;
+  category: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+  due_date?: string;
+  created_at?: string;
+  updated_at?: string;
+  notes?: string;
 }
 
 interface ReportSubmissionResponse {
@@ -65,8 +81,18 @@ export const generateReferenceNumber = (category: string): string => {
 // Convert image data URL to a file and upload it to Supabase Storage
 const uploadImage = async (imageData: string, reportId: string): Promise<string> => {
   try {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      console.warn('Supabase not configured, using fallback URL');
+      return `https://via.placeholder.com/800x600?text=Image+${reportId}`;
+    }
+
     // Convert base64 to blob
     const base64Data = imageData.split(',')[1];
+    if (!base64Data) {
+      throw new Error('Invalid image data format');
+    }
+
     const byteCharacters = atob(base64Data);
     const byteArrays = [];
     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
@@ -79,26 +105,165 @@ const uploadImage = async (imageData: string, reportId: string): Promise<string>
       byteArrays.push(byteArray);
     }
     const blob = new Blob(byteArrays, { type: 'image/jpeg' });
-    
+
+    // Create unique filename with timestamp
+    const timestamp = Date.now();
+    const fileName = `reports/${reportId}/${timestamp}.jpg`;
+
+    console.log('Uploading image to Supabase storage:', fileName);
+
     // Upload to Supabase Storage
-    const fileName = `${reportId}-${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from('report-images')
-      .upload(`public/${fileName}`, blob);
-    
-    if (error) throw error;
-    
-    // Get public URL
+      .upload(fileName, blob, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+
+      // If bucket doesn't exist, try to create it
+      if (error.message.includes('bucket') || error.message.includes('not found')) {
+        console.log('Attempting to create storage bucket...');
+        try {
+          const { error: createError } = await supabase.storage.createBucket('report-images', {
+            public: true,
+            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            fileSizeLimit: 10485760 // 10MB
+          });
+
+          if (createError) {
+            console.error('Failed to create bucket:', createError);
+          } else {
+            console.log('Bucket created successfully, retrying upload...');
+            // Retry upload after bucket creation
+            const { error: retryError } = await supabase.storage
+              .from('report-images')
+              .upload(fileName, blob, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (retryError) {
+              throw retryError;
+            }
+
+            // Get public URL for the uploaded image
+            const { data: urlData } = supabase.storage
+              .from('report-images')
+              .getPublicUrl(fileName);
+
+            console.log('Image uploaded successfully:', urlData.publicUrl);
+            return urlData.publicUrl;
+          }
+        } catch (bucketError) {
+          console.error('Bucket creation failed:', bucketError);
+        }
+      }
+
+      throw error;
+    }
+
+    // Get public URL for the uploaded image
     const { data: urlData } = supabase.storage
       .from('report-images')
-      .getPublicUrl(`public/${fileName}`);
-      
+      .getPublicUrl(fileName);
+
+    if (!urlData.publicUrl) {
+      throw new Error('Failed to get public URL for uploaded image');
+    }
+
+    console.log('Image uploaded successfully:', urlData.publicUrl);
     return urlData.publicUrl;
+
   } catch (error) {
     console.error('Error uploading image:', error);
-    // Fallback to returning a placeholder URL
-    return `https://storage.civicgo.example/uploads/${Date.now()}.jpg`;
+
+    // Multiple fallback options
+    try {
+      // Try Cloudinary as secondary option if configured
+      if (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME &&
+          import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+        console.log('Attempting Cloudinary upload as fallback...');
+        const cloudinaryUrl = await uploadToCloudinary(imageData, reportId);
+        return cloudinaryUrl;
+      }
+    } catch (cloudinaryError) {
+      console.error('Cloudinary fallback failed:', cloudinaryError);
+    }
+
+    // Final fallback - return a placeholder
+    console.warn('All upload methods failed, using placeholder');
+    return `https://via.placeholder.com/800x600?text=Image+${reportId}`;
   }
+};
+
+// Fallback upload to Cloudinary
+const uploadToCloudinary = async (imageData: string, reportId: string): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', dataURLToBlob(imageData));
+  formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+  formData.append('public_id', `civicgo-${reportId}-${Date.now()}`);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+    {
+      method: 'POST',
+      body: formData
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Cloudinary upload failed');
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+};
+
+// Helper function to convert data URL to blob
+const dataURLToBlob = (dataURL: string): Blob => {
+  const arr = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+};
+
+// Generate thumbnail URL from full image URL
+export const getThumbnailUrl = (imageUrl: string, size: number = 300): string => {
+  // If no image URL provided, return empty string
+  if (!imageUrl || imageUrl.trim() === '') {
+    return '';
+  }
+
+  // If it's a placeholder URL, return it as-is (no thumbnail needed)
+  if (imageUrl.includes('via.placeholder.com')) {
+    return imageUrl;
+  }
+
+  // If it's a Supabase URL, try to get thumbnail
+  if (imageUrl.includes('supabase')) {
+    // For Supabase, we can use transform parameters
+    // Note: This requires Supabase Image Transformation to be enabled
+    return `${imageUrl}?width=${size}&height=${size}&resize=contain`;
+  }
+
+  // If it's a Cloudinary URL, use Cloudinary transformations
+  if (imageUrl.includes('cloudinary')) {
+    const urlParts = imageUrl.split('/upload/');
+    if (urlParts.length === 2) {
+      return `${urlParts[0]}/upload/w_${size},h_${size},c_fill/${urlParts[1]}`;
+    }
+  }
+
+  // For other URLs or if transformations aren't available, return original
+  return imageUrl;
 };
 
 // Get user's current location
@@ -150,7 +315,8 @@ export const submitReport = async (
   category: string,
   location: { lat: number, lng: number, address: string, city: string },
   imageData: string | null,
-  userId: string = 'anon_user' // Default for anonymous users
+  userId: string = 'anon_user',
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent' = 'Medium' // Add priority parameter
 ): Promise<ReportSubmissionResponse> => {
   try {
     const reportId = generateReferenceNumber(category);
@@ -186,6 +352,7 @@ export const submitReport = async (
       category: normalizedCategory, // Use the normalized category with proper case
       location,
       city, // Add city to report data
+      priority, // Add priority to report data
       image_url: imageUrl,
       status: 'Submitted',
       created_at: timestamp,
@@ -577,6 +744,284 @@ export const updateReportStatus = async (reportId: string, status: 'Submitted' |
       allReports[reportIndex].updated_at = new Date().toISOString();
       
       localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
+// Create a new task for a report
+export const createTask = async (taskData: Omit<TaskData, 'id' | 'created_at' | 'updated_at'>): Promise<boolean> => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    const task = {
+      ...taskData,
+      created_at: timestamp,
+      updated_at: timestamp
+    };
+
+    // Try to save to Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('report_tasks')
+        .insert([task]);
+
+      if (error) throw error;
+      return true;
+    }
+
+    // Fallback to localStorage
+    const existingTasks = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    const newTask = {
+      ...task,
+      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    existingTasks.push(newTask);
+    localStorage.setItem('civicgo_tasks', JSON.stringify(existingTasks));
+    return true;
+  } catch (error) {
+    console.error('Error creating task:', error);
+    return false;
+  }
+};
+
+// Get all tasks for a specific report
+export const getTasksForReport = async (reportId: string): Promise<TaskData[]> => {
+  try {
+    // Try to get from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('report_tasks')
+        .select('*')
+        .eq('report_id', reportId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as TaskData[];
+    }
+
+    // Fallback to localStorage
+    const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    return allTasks.filter(task => task.report_id === reportId);
+  } catch (error) {
+    console.error('Error fetching tasks for report:', error);
+
+    // Final fallback
+    try {
+      const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+      return allTasks.filter(task => task.report_id === reportId);
+    } catch {
+      return [];
+    }
+  }
+};
+
+// Get all tasks for a specific category (for admin task overview)
+export const getTasksByCategory = async (category: string): Promise<TaskData[]> => {
+  try {
+    // Try to get from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('report_tasks')
+        .select('*')
+        .ilike('category', category)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      return data as TaskData[];
+    }
+
+    // Fallback to localStorage
+    const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    return allTasks.filter(task => task.category.toLowerCase() === category.toLowerCase());
+  } catch (error) {
+    console.error('Error fetching tasks by category:', error);
+
+    // Final fallback
+    try {
+      const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+      return allTasks.filter(task => task.category.toLowerCase() === category.toLowerCase());
+    } catch {
+      return [];
+    }
+  }
+};
+
+// Get task statistics for a category
+export const getTaskStatsByCategory = async (category: string): Promise<{
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  overdue: number;
+}> => {
+  try {
+    const tasks = await getTasksByCategory(category);
+    const now = new Date();
+
+    return {
+      total: tasks.length,
+      pending: tasks.filter(task => task.status === 'Pending').length,
+      inProgress: tasks.filter(task => task.status === 'In Progress').length,
+      completed: tasks.filter(task => task.status === 'Completed').length,
+      overdue: tasks.filter(task =>
+        task.due_date &&
+        new Date(task.due_date) < now &&
+        task.status !== 'Completed' &&
+        task.status !== 'Cancelled'
+      ).length
+    };
+  } catch (error) {
+    console.error('Error getting task stats:', error);
+    return { total: 0, pending: 0, inProgress: 0, completed: 0, overdue: 0 };
+  }
+};
+
+// Get all tasks for admin overview (across all categories)
+export const getAllTasksForAdmin = async (categories: string[]): Promise<TaskData[]> => {
+  try {
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('report_tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error in getAllTasksForAdmin:', error);
+        throw error;
+      }
+
+      // Filter tasks in JavaScript to handle case-insensitive matching
+      const filteredData = data?.filter(task =>
+        categories.some(cat =>
+          cat.toLowerCase() === task.category.toLowerCase()
+        )
+      ) || [];
+
+      return filteredData as TaskData[];
+    }
+
+    // Fallback to localStorage
+    const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    const filteredTasks = allTasks.filter(task => categories.some(cat => cat.toLowerCase() === task.category.toLowerCase()));
+    return filteredTasks;
+  } catch (error) {
+    console.error('Error fetching all tasks for admin:', error);
+
+    // If Supabase fails, try getting tasks by category individually
+    try {
+      const allTasks: TaskData[] = [];
+      for (const category of categories) {
+        const categoryTasks = await getTasksByCategory(category);
+        allTasks.push(...categoryTasks);
+      }
+      return allTasks;
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+
+      // Final fallback to localStorage
+      try {
+        const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+        return allTasks.filter(task => categories.some(cat => cat.toLowerCase() === task.category.toLowerCase()));
+      } catch {
+        return [];
+      }
+    }
+  }
+};
+
+// Update a task
+export const updateTask = async (taskId: string, updates: Partial<TaskData>): Promise<boolean> => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    // Try to update in Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('report_tasks')
+        .update({ ...updates, updated_at: timestamp })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      return true;
+    }
+
+    // Fallback to localStorage
+    const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    const taskIndex = allTasks.findIndex(task => task.id === taskId);
+
+    if (taskIndex === -1) return false;
+
+    allTasks[taskIndex] = {
+      ...allTasks[taskIndex],
+      ...updates,
+      updated_at: timestamp
+    };
+
+    localStorage.setItem('civicgo_tasks', JSON.stringify(allTasks));
+    return true;
+  } catch (error) {
+    console.error('Error updating task:', error);
+
+    // Final fallback
+    try {
+      const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+      const taskIndex = allTasks.findIndex(task => task.id === taskId);
+
+      if (taskIndex === -1) return false;
+
+      allTasks[taskIndex] = {
+        ...allTasks[taskIndex],
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      localStorage.setItem('civicgo_tasks', JSON.stringify(allTasks));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+
+// Delete a task
+export const deleteTask = async (taskId: string): Promise<boolean> => {
+  try {
+    // Try to delete from Supabase first
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('report_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      return true;
+    }
+
+    // Fallback to localStorage
+    const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+    const filteredTasks = allTasks.filter(task => task.id !== taskId);
+
+    if (filteredTasks.length === allTasks.length) return false;
+
+    localStorage.setItem('civicgo_tasks', JSON.stringify(filteredTasks));
+    return true;
+  } catch (error) {
+    console.error('Error deleting task:', error);
+
+    // Final fallback
+    try {
+      const allTasks: TaskData[] = JSON.parse(localStorage.getItem('civicgo_tasks') || '[]');
+      const filteredTasks = allTasks.filter(task => task.id !== taskId);
+
+      if (filteredTasks.length === allTasks.length) return false;
+
+      localStorage.setItem('civicgo_tasks', JSON.stringify(filteredTasks));
       return true;
     } catch {
       return false;

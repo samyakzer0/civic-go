@@ -9,6 +9,7 @@ export interface AIAnalysisResult {
   category: string;
   description: string;
   confidence: number;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
 }
 
 // Perplexity API configuration
@@ -43,6 +44,13 @@ Analyze the image and respond with a JSON object containing:
 2. "category": Must be one of: "Water", "Electricity", "Roads", "Sanitation", "Infrastructure", or "Others"
 3. "description": A detailed description of the issue and its potential impact (max 200 characters)
 4. "confidence": A number between 0 and 1 representing your confidence in the analysis
+5. "priority": Must be one of: "Low", "Medium", "High", or "Urgent" based on severity and urgency
+
+Priority Guidelines:
+- Urgent: Immediate danger to life/safety, severe infrastructure damage, major service disruption
+- High: Significant impact on daily life, potential for escalation, time-sensitive issues
+- Medium: Moderate inconvenience, maintenance issues, non-critical problems
+- Low: Minor issues, cosmetic problems, long-term maintenance needs
 
 Category Guidelines:
 - Water: Pipe leaks, flooding, drainage issues, water infrastructure
@@ -118,7 +126,8 @@ Respond ONLY with the JSON object, no additional text.`;
         title: parsedResult.title || 'Civic Issue Detected',
         category: parsedResult.category || 'Others',
         description: parsedResult.description || 'An issue was detected that requires municipal attention.',
-        confidence: parsedResult.confidence || 0.8
+        confidence: parsedResult.confidence || 0.8,
+        priority: parsedResult.priority || 'Medium'
       };
     } catch (parseError) {
       console.error('Error parsing Perplexity response:', parseError);
@@ -145,16 +154,43 @@ function processTextResponse(content: string): AIAnalysisResult {
   
   // Determine category based on keywords
   let category = 'Others';
+  let priority: 'Low' | 'Medium' | 'High' | 'Urgent' = 'Medium';
+  
   if (lowerContent.includes('water') || lowerContent.includes('leak') || lowerContent.includes('pipe') || lowerContent.includes('flood')) {
     category = 'Water';
+    if (lowerContent.includes('burst') || lowerContent.includes('major') || lowerContent.includes('severe')) {
+      priority = 'Urgent';
+    } else if (lowerContent.includes('leak') || lowerContent.includes('dripping')) {
+      priority = 'High';
+    }
   } else if (lowerContent.includes('light') || lowerContent.includes('electric') || lowerContent.includes('power') || lowerContent.includes('wire')) {
     category = 'Electricity';
+    if (lowerContent.includes('dangerous') || lowerContent.includes('hanging') || lowerContent.includes('exposed')) {
+      priority = 'Urgent';
+    } else if (lowerContent.includes('outage') || lowerContent.includes('not working')) {
+      priority = 'High';
+    }
   } else if (lowerContent.includes('road') || lowerContent.includes('pothole') || lowerContent.includes('street') || lowerContent.includes('pavement')) {
     category = 'Roads';
+    if (lowerContent.includes('accident') || lowerContent.includes('dangerous') || lowerContent.includes('large')) {
+      priority = 'Urgent';
+    } else if (lowerContent.includes('pothole') || lowerContent.includes('damage')) {
+      priority = 'High';
+    }
   } else if (lowerContent.includes('garbage') || lowerContent.includes('trash') || lowerContent.includes('waste') || lowerContent.includes('sanitation')) {
     category = 'Sanitation';
+    if (lowerContent.includes('overflowing') || lowerContent.includes('blocking') || lowerContent.includes('health')) {
+      priority = 'High';
+    } else {
+      priority = 'Low';
+    }
   } else if (lowerContent.includes('building') || lowerContent.includes('bridge') || lowerContent.includes('construction') || lowerContent.includes('structure')) {
     category = 'Infrastructure';
+    if (lowerContent.includes('collapse') || lowerContent.includes('dangerous') || lowerContent.includes('unsafe')) {
+      priority = 'Urgent';
+    } else if (lowerContent.includes('crack') || lowerContent.includes('damage')) {
+      priority = 'High';
+    }
   }
 
   // Generate title based on category
@@ -167,7 +203,8 @@ function processTextResponse(content: string): AIAnalysisResult {
     title,
     category,
     description,
-    confidence: 0.7
+    confidence: 0.7,
+    priority
   };
 }
 
@@ -198,31 +235,36 @@ function fallbackAnalysis(imageData: string): AIAnalysisResult {
       title: 'Streetlight not working',
       category: 'Electricity',
       description: 'A streetlight appears to be malfunctioning or not illuminating properly.',
-      confidence: 0.92
+      confidence: 0.92,
+      priority: 'Medium' as const
     },
     {
       title: 'Water leakage',
       category: 'Water',
       description: 'There is a water pipe leakage that needs immediate attention.',
-      confidence: 0.89
+      confidence: 0.89,
+      priority: 'High' as const
     },
     {
       title: 'Damaged road/pothole',
       category: 'Roads',
       description: 'The road surface is damaged with a significant pothole that poses risk to vehicles.',
-      confidence: 0.95
+      confidence: 0.95,
+      priority: 'High' as const
     },
     {
       title: 'Fallen tree branch',
       category: 'Infrastructure',
       description: 'A large tree branch has fallen and is blocking the pathway.',
-      confidence: 0.87
+      confidence: 0.87,
+      priority: 'Urgent' as const
     },
     {
       title: 'Overflowing garbage bin',
       category: 'Sanitation',
       description: 'Garbage bin is overflowing and needs to be collected.',
-      confidence: 0.91
+      confidence: 0.91,
+      priority: 'Low' as const
     }
   ];
 

@@ -5,7 +5,7 @@ import CountUp from './CountUp';
 import { AnimatedThemeToggler } from './ui/AnimatedThemeToggler';
 import CameraButton from './ui/CameraButton';
 import NotificationIcon from './ui/NotificationIcon';
-import { getUserReports, getRecentReports, ReportData } from '../services/ReportService';
+import { getUserReports, getRecentReports, ReportData, getThumbnailUrl } from '../services/ReportService';
 import { getCommunityStats, CommunityStats } from '../services/AnalyticsService';
 import IssueHeatMap from './IssueHeatMap';
 import AnimatedBackground from './AnimatedBackground';
@@ -353,16 +353,21 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                   
                   <div className="relative flex items-center space-x-4">
                     {/* Report Image */}
-                    {update.image_url && (
+                    {update.image_url && getThumbnailUrl(update.image_url, 48) && (
                       <div className="flex-shrink-0">
                         <img
-                          src={update.image_url}
+                          src={getThumbnailUrl(update.image_url, 48)}
                           alt="Report"
                           className="w-12 h-12 object-cover rounded-lg border-2 border-white/20 cursor-pointer hover:scale-110 transition-transform"
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent triggering the parent onClick
                             localStorage.setItem('capturedImage', update.image_url);
                             onNavigate('report');
+                          }}
+                          onError={(e) => {
+                            // Hide broken images
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
                           }}
                         />
                       </div>
@@ -479,16 +484,21 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                   
                   <div className="relative flex items-start space-x-4">
                     {/* Report Image */}
-                    {report.image_url && (
+                    {report.image_url && getThumbnailUrl(report.image_url, 64) && (
                       <div className="flex-shrink-0">
                         <img
-                          src={report.image_url}
+                          src={getThumbnailUrl(report.image_url, 64)}
                           alt="Report"
                           className="w-16 h-16 object-cover rounded-lg border-2 border-white/20 cursor-pointer hover:scale-110 transition-transform"
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent triggering the parent onClick
                             localStorage.setItem('capturedImage', report.image_url);
                             onNavigate('report');
+                          }}
+                          onError={(e) => {
+                            // Hide broken images
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
                           }}
                         />
                       </div>

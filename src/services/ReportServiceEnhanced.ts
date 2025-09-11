@@ -12,6 +12,7 @@ export const getReportsByCategoryWithRealData = async (category: string): Promis
     const realCategories = ['Water', 'Electricity', 'Infrastructure', 'Sanitation', 'Roads', 'Streetlights'];
     const realCities = ["Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", "Kolkata", "Pune"];
     const statuses = ['Submitted', 'In Review', 'Forwarded', 'Resolved'];
+    const priorities = ['Low', 'Medium', 'High', 'Urgent'];
     
     // Real-world issue titles and descriptions
     const waterIssues = [
@@ -86,6 +87,7 @@ export const getReportsByCategoryWithRealData = async (category: string): Promis
       const reportId = generateReferenceNumber(category);
       const city = realCities[Math.floor(Math.random() * realCities.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const priority = priorities[Math.floor(Math.random() * priorities.length)];
       const createdDate = new Date();
       // Adjust date to be between 1-30 days ago
       createdDate.setDate(createdDate.getDate() - Math.floor(Math.random() * 30));
@@ -107,6 +109,7 @@ export const getReportsByCategoryWithRealData = async (category: string): Promis
           address: `${Math.floor(Math.random() * 300) + 1} ${['Main St', 'Park Ave', 'Gandhi Road', 'MG Road', 'Station Road'][Math.floor(Math.random() * 5)]}, ${city}, India`
         },
         city: city,
+        priority: priority as any,
         image_url: i % 3 === 0 ? `https://source.unsplash.com/random/800x600?${category.toLowerCase()}` : '',
         status: status as any,
         created_at: createdDate.toISOString(),

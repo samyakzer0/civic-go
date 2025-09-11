@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { updateReportStatus, getReportById, ReportData, getCityList } from '../../services/ReportService';
+import { updateReportStatus, getReportById, ReportData, getCityList, TaskData, createTask, getTasksForReport, updateTask, deleteTask, getThumbnailUrl } from '../../services/ReportService';
 import { createStatusUpdateNotification } from '../../utils/notificationUtils';
 import { getReportsByCategoryWithRealData } from '../../services/ReportServiceEnhanced';
+import { supabase } from '../../services/supabase';
 import {
   ArrowDown,
   ArrowUp,
@@ -13,15 +14,19 @@ import {
   RefreshCw,
   Search,
   Send,
-  MapPin
+  MapPin,
+  Plus,
+  ClipboardList,
+  Calendar
 } from 'lucide-react';
 import Loader from '../Loader';
 
 interface CategoryAdminProps {
   category: string;
+  onTasksChange?: () => void;
 }
 
-function CategoryAdmin({ category }: CategoryAdminProps) {
+function CategoryAdmin({ category, onTasksChange }: CategoryAdminProps) {
   const { theme } = useTheme();
   const [reports, setReports] = useState<ReportData[]>([]);
   const [filteredReports, setFilteredReports] = useState<ReportData[]>([]);
@@ -29,12 +34,22 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [cityFilter, setCityFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [cityList, setCityList] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [tasks, setTasks] = useState<TaskData[]>([]);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    task_description: '',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Urgent',
+    due_date: '',
+    notes: ''
+  });
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   // Load reports on mount and when category changes
   useEffect(() => {
@@ -45,7 +60,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
   // Apply filters and sorting when reports, search term, or filters change
   useEffect(() => {
     applyFiltersAndSort();
-  }, [reports, searchTerm, statusFilter, cityFilter, sortBy, sortOrder]);
+  }, [reports, searchTerm, statusFilter, cityFilter, priorityFilter, sortBy, sortOrder]);
   
   const loadCityList = async () => {
     try {
@@ -98,6 +113,11 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       );
     }
     
+    // Apply priority filter
+    if (priorityFilter) {
+      filtered = filtered.filter(report => report.priority === priorityFilter);
+    }
+    
     // Apply sorting
     filtered.sort((a, b) => {
       let valA, valB;
@@ -114,6 +134,10 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       } else if (sortBy === 'city') {
         valA = (a.city || '').toLowerCase();
         valB = (b.city || '').toLowerCase();
+      } else if (sortBy === 'priority') {
+        const priorityOrder = { 'Low': 1, 'Medium': 2, 'High': 3, 'Urgent': 4 };
+        valA = priorityOrder[a.priority] || 0;
+        valB = priorityOrder[b.priority] || 0;
       } else {
         valA = a[sortBy as keyof ReportData];
         valB = b[sortBy as keyof ReportData];
@@ -199,6 +223,95 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
     }
   };
 
+  // Load tasks for the selected report
+  const loadTasks = async (reportId: string) => {
+    try {
+      const reportTasks = await getTasksForReport(reportId);
+      setTasks(reportTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      setTasks([]);
+    }
+  };
+
+  // Handle creating a new task
+  const handleCreateTask = async () => {
+    if (!selectedReport || !taskForm.task_description.trim()) return;
+
+    try {
+      setIsCreatingTask(true);
+
+      // Get current user ID from authentication
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No authenticated user found');
+        return;
+      }
+
+      const success = await createTask({
+        report_id: selectedReport.report_id,
+        task_description: taskForm.task_description,
+        assigned_by: user.id, // Use actual user ID
+        category: selectedReport.category,
+        priority: taskForm.priority,
+        status: 'Pending',
+        due_date: taskForm.due_date || undefined,
+        notes: taskForm.notes || undefined
+      });
+
+      if (success) {
+        // Reset form
+        setTaskForm({
+          task_description: '',
+          priority: 'Medium',
+          due_date: '',
+          notes: ''
+        });
+        setShowTaskModal(false);
+
+        // Reload tasks
+        await loadTasks(selectedReport.report_id);
+        
+        // Notify parent component of task changes
+        onTasksChange?.();
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+    } finally {
+      setIsCreatingTask(false);
+    }
+  };
+
+  // Handle updating task status
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskData['status']) => {
+    try {
+      const success = await updateTask(taskId, { status: newStatus });
+      if (success && selectedReport) {
+        await loadTasks(selectedReport.report_id);
+        // Notify parent component of task changes
+        onTasksChange?.();
+      }
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  // Handle deleting a task
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const success = await deleteTask(taskId);
+      if (success && selectedReport) {
+        await loadTasks(selectedReport.report_id);
+        // Notify parent component of task changes
+        onTasksChange?.();
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -275,7 +388,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
       
       {/* Filter and Search Bar */}
       <div className={`mb-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow`}>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={18} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
@@ -340,6 +453,29 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
             </select>
           </div>
           
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Filter size={18} className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} />
+            </div>
+            <select
+              className={`block w-full pl-10 pr-3 py-2 border rounded-md appearance-none ${
+                theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-900'
+              } focus:outline-none focus:ring-1 ${
+                theme === 'dark' ? 'focus:ring-blue-500' : 'focus:ring-blue-500'
+              }`}
+              value={priorityFilter || ''}
+              onChange={e => setPriorityFilter(e.target.value || null)}
+            >
+              <option value="">All Priorities</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+          
           <div className="text-right">
             <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               {filteredReports.length} {filteredReports.length === 1 ? 'report' : 'reports'} found
@@ -384,6 +520,19 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                           className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedReport.status)}`}
                         >
                           {selectedReport.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          selectedReport.priority === 'Urgent'
+                            ? 'bg-red-100 text-red-800'
+                            : selectedReport.priority === 'High'
+                            ? 'bg-orange-100 text-orange-800'
+                            : selectedReport.priority === 'Medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedReport.priority} Priority
                         </span>
                       </div>
                       <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -500,15 +649,21 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                   
                   {/* Image column */}
                   <div>
-                    {selectedReport.image_url ? (
+                    {selectedReport.image_url && getThumbnailUrl(selectedReport.image_url, 400) ? (
                       <>
                         <h4 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                           Image
                         </h4>
                         <img
-                          src={selectedReport.image_url}
+                          src={getThumbnailUrl(selectedReport.image_url, 400)}
                           alt={selectedReport.title}
-                          className="w-full h-auto rounded-lg border border-gray-700"
+                          className="w-full h-auto rounded-lg border border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(selectedReport.image_url, '_blank')}
+                          onError={(e) => {
+                            // Hide broken images
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
                         />
                         <a
                           href={selectedReport.image_url}
@@ -539,6 +694,134 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       </p>
                     </div>
                   </div>
+                </div>
+                
+                {/* Tasks Section */}
+                <div className="mt-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Tasks ({tasks.length})
+                    </h4>
+                    <button
+                      onClick={() => setShowTaskModal(true)}
+                      className={`flex items-center px-3 py-1.5 text-sm rounded-md ${
+                        theme === 'dark'
+                          ? 'bg-green-800 text-green-100 hover:bg-green-700'
+                          : 'bg-green-500 text-white hover:bg-green-600'
+                      }`}
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Add Task
+                    </button>
+                  </div>
+                  
+                  {tasks.length > 0 ? (
+                    <div className="space-y-2">
+                      {tasks.map(task => (
+                        <div
+                          key={task.id}
+                          className={`p-3 rounded-lg border ${
+                            theme === 'dark'
+                              ? 'bg-gray-700 border-gray-600'
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                                {task.task_description}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  task.priority === 'Urgent'
+                                    ? 'bg-red-100 text-red-800'
+                                    : task.priority === 'High'
+                                    ? 'bg-orange-100 text-orange-800'
+                                    : task.priority === 'Medium'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {task.priority}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  task.status === 'Completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : task.status === 'In Progress'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : task.status === 'Cancelled'
+                                    ? 'bg-gray-100 text-gray-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {task.status}
+                                </span>
+                                {task.due_date && (
+                                  <span className={`px-2 py-0.5 rounded text-xs flex items-center ${
+                                    new Date(task.due_date) < new Date()
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    <Calendar size={10} className="mr-1" />
+                                    {new Date(task.due_date).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              {task.notes && (
+                                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {task.notes}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1 sm:flex-col sm:gap-1 sm:min-w-fit">
+                              {task.status !== 'Completed' && task.status !== 'Cancelled' && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateTaskStatus(task.id!, 'In Progress')}
+                                    className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
+                                      theme === 'dark'
+                                        ? 'bg-blue-800 text-blue-100 hover:bg-blue-700'
+                                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                    }`}
+                                  >
+                                    Start
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateTaskStatus(task.id!, 'Completed')}
+                                    className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
+                                      theme === 'dark'
+                                        ? 'bg-green-800 text-green-100 hover:bg-green-700'
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                    }`}
+                                  >
+                                    Complete
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => handleDeleteTask(task.id!)}
+                                className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
+                                  theme === 'dark'
+                                    ? 'bg-red-800 text-red-100 hover:bg-red-700'
+                                    : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                }`}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`text-center py-4 rounded-lg border-2 border-dashed ${
+                      theme === 'dark'
+                        ? 'border-gray-600 text-gray-400'
+                        : 'border-gray-300 text-gray-500'
+                    }`}>
+                      <ClipboardList size={24} className="mx-auto mb-2" />
+                      <p className="text-sm">No tasks assigned yet</p>
+                      <p className="text-xs mt-1">Click "Add Task" to create the first task</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -580,6 +863,19 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       >
                         City
                         {sortBy === 'city' && (
+                          sortOrder === 'asc' ? 
+                            <ArrowUp size={14} className="ml-1" /> : 
+                            <ArrowDown size={14} className="ml-1" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      <button
+                        className="flex items-center focus:outline-none"
+                        onClick={() => handleSort('priority')}
+                      >
+                        Priority
+                        {sortBy === 'priority' && (
                           sortOrder === 'asc' ? 
                             <ArrowUp size={14} className="ml-1" /> : 
                             <ArrowDown size={14} className="ml-1" />
@@ -629,7 +925,10 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                           ? 'hover:bg-gray-800/50 cursor-pointer' 
                           : 'hover:bg-gray-50 cursor-pointer'
                       }`}
-                      onClick={() => setSelectedReport(report)}
+                      onClick={() => {
+                        setSelectedReport(report);
+                        loadTasks(report.report_id);
+                      }}
                     >
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         {report.report_id}
@@ -639,6 +938,19 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         {report.city || 'Unknown'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          report.priority === 'Urgent'
+                            ? 'bg-red-100 text-red-800'
+                            : report.priority === 'High'
+                            ? 'bg-orange-100 text-orange-800'
+                            : report.priority === 'Medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {report.priority}
+                        </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(report.status)}`}>
@@ -656,6 +968,7 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedReport(report);
+                            loadTasks(report.report_id);
                           }}
                           className={`ml-2 px-2 py-1 rounded ${
                             theme === 'dark'
@@ -677,6 +990,128 @@ function CategoryAdmin({ category }: CategoryAdminProps) {
             </div>
           )}
         </>
+      )}
+      
+      {/* Task Creation Modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg shadow-xl max-w-md w-full mx-4 ${
+            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="p-6">
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Add New Task
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Task Description *
+                  </label>
+                  <textarea
+                    value={taskForm.task_description}
+                    onChange={(e) => setTaskForm({...taskForm, task_description: e.target.value})}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-gray-200'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    rows={3}
+                    placeholder="Describe the task that needs to be completed..."
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Priority
+                  </label>
+                  <select
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm({...taskForm, priority: e.target.value as TaskData['priority']})}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-gray-200'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={taskForm.due_date}
+                    onChange={(e) => setTaskForm({...taskForm, due_date: e.target.value})}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-gray-200'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                  />
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Notes
+                  </label>
+                  <textarea
+                    value={taskForm.notes}
+                    onChange={(e) => setTaskForm({...taskForm, notes: e.target.value})}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-gray-200'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    rows={2}
+                    placeholder="Additional notes or instructions..."
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowTaskModal(false);
+                    setTaskForm({
+                      task_description: '',
+                      priority: 'Medium',
+                      due_date: '',
+                      notes: ''
+                    });
+                  }}
+                  className={`px-4 py-2 text-sm rounded-md ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateTask}
+                  disabled={!taskForm.task_description.trim() || isCreatingTask}
+                  className={`px-4 py-2 text-sm rounded-md ${
+                    !taskForm.task_description.trim() || isCreatingTask
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : theme === 'dark'
+                      ? 'bg-blue-800 text-blue-100 hover:bg-blue-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  } ${isCreatingTask ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isCreatingTask ? 'Creating...' : 'Create Task'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

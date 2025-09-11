@@ -19,6 +19,7 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Water');
+  const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
   const [image, setImage] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number, lng: number, address: string, city: string }>({
     lat: 28.6139, 
@@ -42,6 +43,7 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
     category: string;
     description: string;
     confidence: number;
+    priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   } | null>(null);
   
   // Location states
@@ -186,6 +188,7 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
       setTitle(result.title);
       setCategory(result.category);
       setDescription(result.description);
+      setPriority(result.priority);
       
       console.log("Form pre-filled with AI suggestions");
     } catch (error) {
@@ -197,8 +200,13 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
   };
 
   const handleAcceptAI = () => {
-    // AI suggestions already applied to form, just acknowledge
-    // This could show a confirmation toast or animation
+    if (aiResult) {
+      // AI suggestions already applied to form, just acknowledge
+      setTitle(aiResult.title);
+      setCategory(aiResult.category);
+      setDescription(aiResult.description);
+      setPriority(aiResult.priority);
+    }
     setAiResult(null); // Hide the AI component
   };
 
@@ -223,7 +231,8 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
         category,
         location,
         image,
-        userId
+        userId,
+        priority
       );
       
       if (response.success) {
@@ -407,6 +416,27 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
                   {cat}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as 'Low' | 'Medium' | 'High' | 'Urgent')}
+              className={`w-full p-4 ${
+                theme === 'dark' 
+                  ? 'border-gray-700 bg-gray-800 text-white focus:ring-blue-600' 
+                  : 'border-gray-300 bg-white text-gray-800 focus:ring-blue-500'
+              } border rounded-xl focus:ring-2 focus:border-transparent transition-all appearance-none`}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
             </select>
           </div>
 

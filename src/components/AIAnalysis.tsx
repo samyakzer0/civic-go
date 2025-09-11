@@ -11,6 +11,7 @@ interface AIAnalysisProps {
     category: string;
     description: string;
     confidence: number;
+    priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   } | null;
   onAccept: () => void;
   onReject: () => void;
@@ -81,6 +82,15 @@ function AIAnalysis({ isAnalyzing, result, onAccept, onReject }: AIAnalysisProps
           </p>
           <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
             {result.category}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            Priority:
+          </p>
+          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+            {result.priority}
           </p>
         </div>
         
