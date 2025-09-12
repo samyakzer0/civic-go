@@ -43,17 +43,17 @@ function WelcomePage({ onSignIn, onNavigate }: WelcomePageProps) {
         </div>
 
       {/* Hero Illustration */}
-      <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 max-w-6xl mx-auto">
-        <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1/2">
-          <div className="w-full h-64 md:h-96 rounded-2xl shadow-lg overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 max-w-7xl mx-auto">
+        <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1 xl:w-2/5 2xl:w-1/3  ">
+          <div className="w-full aspect-square md:aspect-[4/3] xl:aspect-[4/4] 2xl:aspect-[4/3] overflow-hidden">
             <DotLottieReact
               src={theme === 'dark' 
-                ? "https://lottie.host/ca2cf854-2b75-4fc5-8638-8ac8b9cc9c88/67uGha99NN.lottie"
-                : "https://lottie.host/10a38492-0121-49e4-8d2a-f91263ea7e6f/CdeHlMBQuw.lottie"
+                ? "https://lottie.host/6fe42179-e94e-446f-9c6d-eeea9e8592af/8qdAJ2K7L7.lottie"
+                : "https://lottie.host/6fe42179-e94e-446f-9c6d-eeea9e8592af/8qdAJ2K7L7.lottie"
               }
               loop
               autoplay
-              className="w-full h-full"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>
