@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Clock, ExternalLink, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getReportById, ReportData, getThumbnailUrl } from '../services/ReportService';
+import { ShinyButton } from './magicui/shiny-button';
 
 interface ReportDetailPageProps {
   onNavigate: (page: string) => void;
@@ -376,20 +377,22 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
 
         {/* Action Buttons */}
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
-          <button
+          <ShinyButton
             onClick={() => onNavigate('status')}
-            className={`flex-1 ${theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} text-gray-800 dark:text-white py-3 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2`}
+            size="lg"
+            className="flex-1 shadow-lg"
           >
             <ArrowLeft size={20} />
             Back to Reports
-          </button>
-          <button
+          </ShinyButton>
+          <ShinyButton
             onClick={() => onNavigate('report')}
-            className={`${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2`}
+            size="lg"
+            className="flex-1 shadow-lg"
           >
             <span>📝</span>
             Submit New Report
-          </button>
+          </ShinyButton>
         </div>
       </div>
     </div>

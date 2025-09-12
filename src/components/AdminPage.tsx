@@ -17,7 +17,6 @@ function AdminPage({ onNavigate, user }: AdminPageProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
-  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [showSetupInstructions, setShowSetupInstructions] = useState(false);
 
   useEffect(() => {
@@ -55,7 +54,6 @@ function AdminPage({ onNavigate, user }: AdminPageProps) {
           
           // Check for specific error codes
           if (error.status === 406 || error.code === '406') {
-            setErrorStatus(406);
             setShowSetupInstructions(true);
           } else {
             // For other errors, redirect to home
@@ -87,10 +85,6 @@ function AdminPage({ onNavigate, user }: AdminPageProps) {
   const handleLogin = () => {
     setIsAuthenticated(true);
     checkAuthStatus();
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
   };
 
   const handleBackToHome = () => {
@@ -158,7 +152,7 @@ function AdminPage({ onNavigate, user }: AdminPageProps) {
   }
 
   return (
-    <AdminDashboard onLogout={handleLogout} onNavigate={handleBackToHome} user={user} />
+    <AdminDashboard onNavigate={handleBackToHome} user={user} />
   );
 }
 

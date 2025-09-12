@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, LogOut, Layers, BarChart4, Loader2, TrendingUp, ClipboardList, RefreshCw } from 'lucide-react';
-import { getCurrentUser, signOut, getUserAdminCategories } from '../../services/supabase.ts';
+import { ArrowLeft, Layers, BarChart4, Loader2, TrendingUp, ClipboardList, RefreshCw } from 'lucide-react';
+import { getCurrentUser, getUserAdminCategories } from '../../services/supabase.ts';
 import { useTheme } from '../../contexts/ThemeContext';
 import CategoryAdmin from './CategoryAdmin';
 import AdminAnalytics from '../AdminAnalytics';
 import { TaskData, getTasksByCategory, getTaskStatsByCategory, getAllTasksForAdmin } from '../../services/ReportService';
 
 interface AdminDashboardProps {
-  onLogout: () => void;
   onNavigate?: () => void;
   user?: any; // Add user prop
 }
 
-function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
+function AdminDashboard({ onNavigate, user }: AdminDashboardProps) {
   const { theme } = useTheme();
   const [userName, setUserName] = useState<string>('');
   const [adminCategories, setAdminCategories] = useState<string[]>([]);
@@ -94,15 +93,6 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
     }
   }, [adminCategories]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      onLogout();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
@@ -134,16 +124,6 @@ function AdminDashboard({ onLogout, onNavigate, user }: AdminDashboardProps) {
                 {userName}
               </span>
             </div>
-            <button
-              onClick={handleLogout}
-              className={`p-2 rounded-xl ${
-                theme === 'dark' 
-                  ? 'text-red-400 hover:bg-red-900/30' 
-                  : 'text-red-600 hover:bg-red-100'
-              } transition-colors`}
-            >
-              <LogOut size={18} />
-            </button>
           </div>
         </div>
       </div>

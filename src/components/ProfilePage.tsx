@@ -5,6 +5,7 @@ import { translations, languages } from '../utils/translations';
 import { isAdmin, isCategoryAdmin } from '../services/supabase.ts';
 import LanguageModal from './LanguageModal';
 import ThemeModal from './ThemeModal';
+import { ShinyButton } from './magicui/shiny-button';
 
 interface ProfilePageProps {
   onNavigate: (page: string) => void;
@@ -228,13 +229,15 @@ function ProfilePage({ onNavigate, user, onSignOut }: ProfilePageProps) {
         </div>
 
         {/* Logout Button */}
-        <button
+        <ShinyButton
           onClick={onSignOut}
-          className="w-full bg-red-500 text-white py-4 rounded-xl font-semibold text-lg hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-3"
+          variant="danger"
+          size="lg"
+          className="w-full shadow-xl"
         >
           <LogOut size={20} />
           {t.logout}
-        </button>
+        </ShinyButton>
       </div>
 
       {/* Language Modal */}

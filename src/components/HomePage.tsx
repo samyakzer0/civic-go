@@ -10,6 +10,7 @@ import { getCommunityStats, CommunityStats } from '../services/AnalyticsService'
 import IssueHeatMap from './IssueHeatMap';
 import AnimatedBackground from './AnimatedBackground';
 import Loader from './Loader';
+import { ShinyButton } from './magicui/shiny-button';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -176,21 +177,16 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
                 </p>
               </div>
               
-              <button
+              <ShinyButton
                 onClick={() => onNavigate('report')}
-                className={`${
-                  theme === 'dark' 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                } backdrop-blur-sm py-3 sm:py-4 px-6 sm:px-8 rounded-xl font-semibold text-base sm:text-lg transition-all duration-300 shadow-lg w-full sm:w-auto hover:shadow-xl hover:scale-[1.02] group-hover:scale-[1.05] transform`}
+                size="lg"
+                className="w-full sm:w-auto shadow-xl"
               >
-                <span className="flex items-center justify-center space-x-2">
-                  <span>{t.reportNewIssue}</span>
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </span>
-              </button>
+                <span>{t.reportNewIssue}</span>
+                <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </ShinyButton>
             </div>
           </div>
 

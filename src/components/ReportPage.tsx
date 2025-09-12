@@ -7,6 +7,7 @@ import LocationMap from './LocationMap';
 import ReportConfirmationModal from './ReportConfirmationModal';
 import { analyzeImage } from '../services/AIService';
 import { getCurrentLocation, submitReport, getCityList } from '../services/ReportService';
+import { ShinyButton } from './magicui/shiny-button';
 
 interface ReportPageProps {
   onNavigate: (page: string) => void;
@@ -543,19 +544,15 @@ function ReportPage({ onNavigate, cameraActive = false, userId = 'anon_user' }: 
           </div>
 
           {/* Submit Button */}
-          <button
-            type="button"
+          <ShinyButton
             onClick={handleSubmit}
+            size="lg"
+            className="w-full shadow-xl"
             disabled={isSubmitting || !title || !description || !category}
-            className={`w-full ${
-              theme === 'dark'
-                ? 'bg-blue-700 hover:bg-blue-800'
-                : 'bg-blue-600 hover:bg-blue-700'
-            } ${(isSubmitting || !title || !description || !category) ? 'opacity-60 cursor-not-allowed' : ''} text-white py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg flex items-center justify-center gap-2`}
           >
             {isSubmitting && <Loader2 size={20} className="animate-spin" />}
             {isSubmitting ? t.processingImage : t.submitReport}
-          </button>
+          </ShinyButton>
         </form>
       </div>
 
