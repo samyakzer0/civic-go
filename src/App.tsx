@@ -3,6 +3,7 @@ import { Home, Plus, FileText, User, ShieldAlert } from 'lucide-react';
 import HomePage from './components/HomePage';
 import ReportPage from './components/ReportPage';
 import StatusPage from './components/StatusPage';
+import ReportDetailPage from './components/ReportDetailPage';
 import ProfilePage from './components/ProfilePage';
 import WelcomePage from './components/WelcomePage';
 import AboutPage from './components/AboutPage';
@@ -21,13 +22,14 @@ import { initializeFirebaseMessaging, requestNotificationPermissionOnGesture, on
 import { updateUserIdInReports } from './services/ReportService';
 import { updateUserIdInNotifications } from './services/EnhancedNotificationService';
 
-type Page = 'welcome' | 'home' | 'report' | 'status' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences' | 'geocoding-test';
+type Page = 'welcome' | 'home' | 'report' | 'status' | 'report-detail' | 'profile' | 'about' | 'admin' | 'notifications' | 'notifications-history' | 'notification-preferences' | 'geocoding-test';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [reportDetailId, setReportDetailId] = useState<string>('');
   const { theme, language } = useTheme();
   const t = translations[language];
   
@@ -66,15 +68,23 @@ function AppContent() {
     if (page.includes('?')) {
       const [basePage, params] = page.split('?');
       const cameraActive = params.includes('camera=true');
+      const reportId = params.includes('reportId=') ? params.split('reportId=')[1].split('&')[0] : '';
+
       setCurrentPage(basePage as Page);
-      
+
       // If navigating to report with camera=true, set cameraActive
       if (basePage === 'report' && cameraActive) {
         setCameraActive(true);
       }
+
+      // If navigating to report-detail, set the report ID
+      if (basePage === 'report-detail' && reportId) {
+        setReportDetailId(reportId);
+      }
     } else {
       setCurrentPage(page as Page);
       setCameraActive(false);
+      setReportDetailId('');
     }
   };
 
@@ -168,6 +178,8 @@ function AppContent() {
         return <ReportPage onNavigate={handleNavigate} cameraActive={cameraActive} userId={userId} />;
       case 'status':
         return <StatusPage onNavigate={handleNavigate} isSignedIn={true} userId={userId} />;
+      case 'report-detail':
+        return <ReportDetailPage onNavigate={handleNavigate} reportId={reportDetailId} />;
       case 'profile':
         return <ProfilePage onNavigate={handleNavigate} user={user} onSignOut={handleSignOut} />;
       case 'about':
@@ -191,72 +203,87 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className={`w-full mx-auto ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} min-h-screen relative max-w-full sm:max-w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl md:shadow-xl md:rounded-t-xl md:rounded-b-xl overflow-hidden`}>
+      {/* Main App Container with Responsive Layout */}
+      <div className={`w-full mx-auto ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} min-h-screen relative 
+        max-w-full
+        sm:max-w-full
+        md:max-w-4xl md:shadow-xl md:rounded-t-xl md:rounded-b-xl
+        lg:max-w-5xl
+        xl:max-w-6xl
+        2xl:max-w-7xl
+      overflow-hidden`}>
         {renderPage()}
         
         {showNavigation && (
-          <nav className={`fixed bottom-0 left-0 md:left-1/2 md:transform md:-translate-x-1/2 w-full md:max-w-2xl lg:max-w-4xl xl:max-w-6xl ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t`}>
-            <div className="flex justify-around py-2">
+          <nav className={`fixed bottom-0 z-50 
+            left-0 w-full
+            md:left-1/2 md:transform md:-translate-x-1/2 md:max-w-4xl
+            lg:max-w-5xl
+            xl:max-w-6xl
+            2xl:max-w-7xl
+            ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
+            border-t backdrop-blur-sm bg-opacity-95`}>
+            <div className="flex justify-around py-2 px-4">
               <button
                 onClick={() => setCurrentPage('home')}
-                className={`flex flex-col items-center py-2 px-4 transition-colors ${
+                className={`flex flex-col items-center py-2 px-2 sm:px-4 transition-colors min-w-0 ${
                   currentPage === 'home' 
                     ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
                     : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}
               >
                 <Home size={24} />
-                <span className="text-xs mt-1">{t.home}</span>
+                <span className="text-xs mt-1 truncate">{t.home}</span>
               </button>
               
               <button
                 onClick={() => setCurrentPage('report')}
-                className={`flex flex-col items-center py-2 px-4 transition-colors ${
+                className={`flex flex-col items-center py-2 px-2 sm:px-4 transition-colors min-w-0 ${
                   currentPage === 'report' 
                     ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
                     : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}
               >
                 <Plus size={24} />
-                <span className="text-xs mt-1">{t.report}</span>
+                <span className="text-xs mt-1 truncate">{t.report}</span>
               </button>
               
               <button
                 onClick={() => setCurrentPage('status')}
-                className={`flex flex-col items-center py-2 px-4 transition-colors ${
+                className={`flex flex-col items-center py-2 px-2 sm:px-4 transition-colors min-w-0 ${
                   currentPage === 'status' 
                     ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
                     : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}
               >
                 <FileText size={24} />
-                <span className="text-xs mt-1">{t.status}</span>
+                <span className="text-xs mt-1 truncate">{t.status}</span>
               </button>
               
               <button
                 onClick={() => setCurrentPage('profile')}
-                className={`flex flex-col items-center py-2 px-4 transition-colors ${
+                className={`flex flex-col items-center py-2 px-2 sm:px-4 transition-colors min-w-0 ${
                   currentPage === 'profile' 
                     ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
                     : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}
               >
                 <User size={24} />
-                <span className="text-xs mt-1">{t.profile}</span>
+                <span className="text-xs mt-1 truncate">{t.profile}</span>
               </button>
               
               {/* Admin panel - only visible to admins */}
               {user?.isAdmin && (
                 <button
                   onClick={() => setCurrentPage('admin')}
-                  className={`flex flex-col items-center py-2 px-1 transition-colors ${
+                  className={`flex flex-col items-center py-2 px-1 sm:px-2 transition-colors min-w-0 ${
                     currentPage === 'admin' 
                       ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600' 
                       : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`}
                 >
                   <ShieldAlert size={24} />
-                  <span className="text-xs mt-1">Admin</span>
+                  <span className="text-xs mt-1 truncate">Admin</span>
                 </button>
               )}
             </div>

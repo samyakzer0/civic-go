@@ -258,7 +258,7 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
                     </div>
                     
                     <button
-                      onClick={() => console.log(`View details for ${report.report_id}`)}
+                      onClick={() => onNavigate(`report-detail?reportId=${report.report_id}`)}
                       className={`p-2 rounded-full ${
                         theme === 'dark'
                           ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
