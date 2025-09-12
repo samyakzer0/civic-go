@@ -107,12 +107,13 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
         : 'bg-gray-50'
     }`}>
       {/* Header - Responsive Layout */}
-      <div className="flex justify-between items-center p-4 sm:p-6 lg:p-8">
+      <div className="flex justify-between items-center px-5 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-3">
           <img 
             src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
             alt="CivicGo Logo" 
-            className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 object-contain cursor-pointer hover:scale-105 transition-transform"
+            className="align-middle"
+            className="w-16 h-16 sm:w-30 sm:h-30 lg:w-24 lg:h-24 object-contain cursor-pointer hover:scale-105 transition-transform"
             onClick={() => {
               // Store the logo image for the report page
               const logoSrc = theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png";

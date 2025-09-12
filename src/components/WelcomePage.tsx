@@ -16,12 +16,12 @@ function WelcomePage({ onSignIn, onNavigate }: WelcomePageProps) {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-gray-800 to-gray-900' : 'bg-gray-50'} flex flex-col`}>
       {/* Header */}
-      <div className="text-center py-8 flex justify-center items-center px-6">
+      <div className="text-center flex justify-center items-center px-6">
         <div className="flex items-center space-x-3">
             <img 
               src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
               alt="CivicGo Logo" 
-              className="w-20 h-20 object-contain cursor-pointer hover:scale-105 transition-transform"
+              className="w-28 h-28 object-contain cursor-pointer hover:scale-105 transition-transform"
               onClick={() => {
                 if (onNavigate) {
                   // Store the logo image for the report page
@@ -47,10 +47,8 @@ function WelcomePage({ onSignIn, onNavigate }: WelcomePageProps) {
         <div className="w-full max-w-md mb-8 md:mb-0 md:mr-8 md:w-1 xl:w-2/5 2xl:w-1/3  ">
           <div className="w-full aspect-square md:aspect-[4/3] xl:aspect-[4/4] 2xl:aspect-[4/3] overflow-hidden">
             <DotLottieReact
-              src={theme === 'dark' 
-                ? "https://lottie.host/6fe42179-e94e-446f-9c6d-eeea9e8592af/8qdAJ2K7L7.lottie"
-                : "https://lottie.host/6fe42179-e94e-446f-9c6d-eeea9e8592af/8qdAJ2K7L7.lottie"
-              }
+              src={"https://lottie.host/6fe42179-e94e-446f-9c6d-eeea9e8592af/8qdAJ2K7L7.lottie"}
+              
               loop
               autoplay
               className="w-full h-full object-contain"
