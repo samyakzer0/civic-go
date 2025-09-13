@@ -35,6 +35,13 @@ export interface ReportData {
   proof_timestamp?: string;
   proof_created_at?: string;
   proof_verification_status?: 'pending' | 'verified' | 'failed';
+  // Status history for timeline
+  status_history?: Array<{
+    status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved';
+    timestamp: string;
+    actor?: string;
+    notes?: string;
+  }>;
 }
 
 // Task data model
@@ -401,7 +408,14 @@ export const submitReport = async (
       // Add proof fields (will be null if proof creation failed)
       proof_cid: proofCid || null,
       proof_timestamp: proofTimestamp || null,
-      proof_verification_status: proofCid ? 'pending' : null
+      proof_verification_status: proofCid ? 'pending' : null,
+      // Initialize status history
+      status_history: [{
+        status: 'Submitted',
+        timestamp: timestamp,
+        actor: 'Citizen',
+        notes: 'Initial grievance submission'
+      }]
     };
 
     // Insert into Supabase if configured
@@ -750,9 +764,24 @@ export const updateUserIdInReports = async (oldUserId: string, newUserId: string
 };
 
 // Update a report's status
-export const updateReportStatus = async (reportId: string, status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved'): Promise<boolean> => {
+export const updateReportStatus = async (reportId: string, status: 'Submitted' | 'In Review' | 'Forwarded' | 'Resolved', actor?: string, notes?: string): Promise<boolean> => {
   try {
     const timestamp = new Date().toISOString();
+    
+    // Get current report to update history
+    const currentReport = await getReportById(reportId);
+    if (!currentReport) return false;
+    
+    // Prepare new history entry
+    const newHistoryEntry = {
+      status,
+      timestamp,
+      actor: actor || 'System',
+      notes: notes || `Status changed to ${status}`
+    };
+    
+    // Update history array
+    const updatedHistory = [...(currentReport.status_history || []), newHistoryEntry];
     
     // Try to update in Supabase first
     if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
@@ -760,7 +789,8 @@ export const updateReportStatus = async (reportId: string, status: 'Submitted' |
         .from('reports')
         .update({ 
           status,
-          updated_at: timestamp
+          updated_at: timestamp,
+          status_history: updatedHistory
         })
         .eq('report_id', reportId);
       
@@ -776,6 +806,7 @@ export const updateReportStatus = async (reportId: string, status: 'Submitted' |
     
     allReports[reportIndex].status = status;
     allReports[reportIndex].updated_at = timestamp;
+    allReports[reportIndex].status_history = updatedHistory;
     
     localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
     return true;
@@ -1078,7 +1109,52 @@ export const deleteTask = async (taskId: string): Promise<boolean> => {
   }
 };
 
-// ===== PROOF-OF-REPORT MANAGEMENT FUNCTIONS =====
+// Initialize status_history for existing reports that don't have it
+export const initializeStatusHistoryForExistingReports = async (): Promise<void> => {
+  try {
+    // Get all reports from localStorage
+    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+    
+    let updated = false;
+    const updatedReports = allReports.map(report => {
+      if (!report.status_history || report.status_history.length === 0) {
+        // Initialize with the current status
+        const historyEntry = {
+          status: report.status,
+          timestamp: report.updated_at,
+          actor: 'System',
+          notes: `Status set to ${report.status}`
+        };
+        
+        // If the report was created before updated_at, add creation entry
+        const history = [];
+        if (report.created_at !== report.updated_at) {
+          history.push({
+            status: 'Submitted' as const,
+            timestamp: report.created_at,
+            actor: 'Citizen',
+            notes: 'Initial grievance submission'
+          });
+        }
+        history.push(historyEntry);
+        
+        updated = true;
+        return {
+          ...report,
+          status_history: history
+        };
+      }
+      return report;
+    });
+    
+    if (updated) {
+      localStorage.setItem('civicgo_reports', JSON.stringify(updatedReports));
+      console.log('Initialized status_history for existing reports');
+    }
+  } catch (error) {
+    console.error('Error initializing status history:', error);
+  }
+};
 
 /**
  * Verify a proof-of-report for a given report

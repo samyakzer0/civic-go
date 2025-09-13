@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { updateReportStatus, getReportById, ReportData, getCityList, TaskData, createTask, getTasksForReport, updateTask, deleteTask, getThumbnailUrl } from '../../services/ReportService';
+import { updateReportStatus, getReportById, ReportData, getCityList, TaskData, createTask, getTasksForReport, updateTask, deleteTask, getThumbnailUrl, initializeStatusHistoryForExistingReports } from '../../services/ReportService';
 import { createStatusUpdateNotification } from '../../utils/notificationUtils';
 import { getReportsByCategoryWithRealData } from '../../services/ReportServiceEnhanced';
 import { supabase } from '../../services/supabase';
@@ -74,6 +74,10 @@ function CategoryAdmin({ category, onTasksChange }: CategoryAdminProps) {
   const loadReports = async () => {
     try {
       setIsLoading(true);
+      
+      // Initialize status history for backward compatibility
+      await initializeStatusHistoryForExistingReports();
+      
       // Case-insensitive match for the category with real data
       const categoryReports = await getReportsByCategoryWithRealData(category);
       console.log(`Fetched ${categoryReports.length} reports for category ${category}:`, categoryReports);
@@ -171,27 +175,15 @@ function CategoryAdmin({ category, onTasksChange }: CategoryAdminProps) {
         setUpdateSuccess(true);
         setTimeout(() => setUpdateSuccess(false), 3000);
         
-        // Update the report in the current state
-        const updatedReports = reports.map(report => {
-          if (report.report_id === reportId) {
-            return {
-              ...report,
-              status: newStatus,
-              updated_at: new Date().toISOString()
-            };
-          }
-          return report;
-        });
+        // Reload the reports to get updated status_history
+        await loadReports();
         
-        setReports(updatedReports);
-        
-        // If we're viewing report details, update the selected report
+        // If we're viewing report details, reload the selected report
         if (selectedReport && selectedReport.report_id === reportId) {
-          setSelectedReport({
-            ...selectedReport,
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          });
+          const updatedReport = await getReportById(reportId);
+          if (updatedReport) {
+            setSelectedReport(updatedReport);
+          }
         }
 
         // Get the full report to access all details including the user_id and title

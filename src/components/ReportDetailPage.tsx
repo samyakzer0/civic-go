@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Clock, ExternalLink, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { getReportById, ReportData, getThumbnailUrl } from '../services/ReportService';
+import { getReportById, ReportData, getThumbnailUrl, initializeStatusHistoryForExistingReports } from '../services/ReportService';
 import { ShinyButton } from './magicui/shiny-button';
 
 interface ReportDetailPageProps {
   onNavigate: (page: string) => void;
   reportId: string;
+}
+
+// Timeline event interface for grievance history
+interface TimelineEvent {
+  id: string;
+  title: string;
+  description: string;
+  actor: string;
+  timestamp: string;
+  status: 'completed' | 'current' | 'pending';
+  icon: string;
+  color: string;
 }
 
 function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
@@ -25,6 +37,9 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
     setError(null);
 
     try {
+      // Initialize status history for backward compatibility
+      await initializeStatusHistoryForExistingReports();
+      
       const reportData = await getReportById(reportId);
       if (reportData) {
         setReport(reportData);
@@ -133,6 +148,113 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
     }
   };
 
+  // Generate timeline events from real status history
+  const generateTimelineEvents = (report: ReportData): TimelineEvent[] => {
+    const events: TimelineEvent[] = [];
+    
+    // Use real status history if available
+    if (report.status_history && report.status_history.length > 0) {
+      report.status_history.forEach((historyItem, index) => {
+        let title = '';
+        let description = '';
+        let icon = '';
+        let color = '';
+        
+        switch (historyItem.status) {
+          case 'Submitted':
+            title = 'Grievance Filed';
+            description = 'Initial complaint submitted by citizen';
+            icon = '🔵';
+            color = 'blue';
+            break;
+          case 'In Review':
+            title = 'Under Review';
+            description = 'Complaint is being reviewed by authorities';
+            icon = '�';
+            color = 'yellow';
+            break;
+          case 'Forwarded':
+            title = 'Forwarded to Department';
+            description = `Case forwarded to ${report.category} Department for action`;
+            icon = '🟠';
+            color = 'orange';
+            break;
+          case 'Resolved':
+            title = 'Issue Resolved';
+            description = 'The reported issue has been successfully resolved';
+            icon = '✅';
+            color = 'green';
+            break;
+        }
+        
+        events.push({
+          id: `history-${index}`,
+          title,
+          description: historyItem.notes || description,
+          actor: historyItem.actor || 'System',
+          timestamp: historyItem.timestamp,
+          status: index === report.status_history!.length - 1 ? 'current' : 'completed',
+          icon,
+          color
+        });
+      });
+    } else {
+      // Fallback to basic timeline if no history (for backward compatibility)
+      events.push({
+        id: '1',
+        title: 'Grievance Filed',
+        description: 'Initial complaint submitted by citizen',
+        actor: 'Citizen',
+        timestamp: report.created_at,
+        status: 'completed',
+        icon: '�',
+        color: 'blue'
+      });
+      
+      // Add current status if different from submitted
+      if (report.status !== 'Submitted') {
+        let title = '';
+        let description = '';
+        let icon = '';
+        let color = '';
+        
+        switch (report.status) {
+          case 'In Review':
+            title = 'Under Review';
+            description = 'Complaint is being reviewed by authorities';
+            icon = '🟡';
+            color = 'yellow';
+            break;
+          case 'Forwarded':
+            title = 'Forwarded to Department';
+            description = `Case forwarded to ${report.category} Department for action`;
+            icon = '�';
+            color = 'orange';
+            break;
+          case 'Resolved':
+            title = 'Issue Resolved';
+            description = 'The reported issue has been successfully resolved';
+            icon = '✅';
+            color = 'green';
+            break;
+        }
+        
+        events.push({
+          id: '2',
+          title,
+          description,
+          actor: 'System',
+          timestamp: report.updated_at,
+          status: 'current',
+          icon,
+          color
+        });
+      }
+    }
+    
+    return events;
+  };
+
   if (isLoading) {
     return (
       <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
@@ -203,65 +325,111 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
         </div>
       </div>
 
-      <div className="p-6 pb-24 max-w-4xl mx-auto">
-        {/* Report Card */}
-        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border overflow-hidden`}>
-
-          {/* Status and Priority Badges */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{getCategoryIcon(report.category)}</span>
-                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {report.title}
-                </h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(report.status)}`}>
-                  {report.status}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(report.priority)}`}>
-                  {report.priority} Priority
-                </span>
-              </div>
+      <div className="p-4 sm:p-6 pb-24 max-w-5xl mx-auto space-y-6">
+        
+        {/* Report Header Section */}
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+          {/* Title with Pin Icon */}
+          <div className="flex items-start gap-3 mb-4">
+            <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
+              <MapPin className={`w-6 h-6 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
-
-            {/* Description */}
-            <div className="mb-4">
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-2`}>
-                Description
-              </h3>
-              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
-                {report.description}
-              </p>
+            <div className="flex-1">
+              <h2 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} leading-tight`}>
+                {report.title}
+              </h2>
             </div>
           </div>
 
-          {/* Image Section */}
-          {report.image_url && (
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
-                Attached Image
-              </h3>
-              <div className="relative">
+          {/* Status and Priority Badges */}
+          <div className="flex flex-wrap gap-3">
+            <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold border ${getStatusColor(report.status)}`}>
+              {report.status}
+            </span>
+            <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getPriorityColor(report.priority)}`}>
+              {report.priority} Priority
+            </span>
+          </div>
+        </div>
+
+        {/* Description Section */}
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
+            Description
+          </h3>
+          <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} leading-relaxed text-base`}>
+            {report.description}
+          </p>
+        </div>
+
+        {/* Location & Image Section - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Location Section */}
+          <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4 flex items-center gap-2`}>
+              <MapPin className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+              Location
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-1`}>
+                  Address
+                </label>
+                <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-medium`}>
+                  {report.location.address}
+                </p>
+              </div>
+              {report.city && (
+                <div>
+                  <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-1`}>
+                    City
+                  </label>
+                  <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-medium`}>
+                    {report.city}
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-1`}>
+                  Coordinates
+                </label>
+                <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} font-mono text-sm`}>
+                  {report.location.lat.toFixed(6)}, {report.location.lng.toFixed(6)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Attached Image Section */}
+          <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
+              Attached Image
+            </h3>
+            {report.image_url ? (
+              <div className="space-y-4">
                 {getThumbnailUrl(report.image_url, 400) ? (
                   <>
-                    <img
-                      src={getThumbnailUrl(report.image_url, 400)}
-                      alt="Report attachment"
-                      className="w-full h-auto rounded-lg border border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(report.image_url, '_blank')}
-                      onError={(e) => {
-                        // Hide broken images
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative group">
+                      <img
+                        src={getThumbnailUrl(report.image_url, 400)}
+                        alt="Report attachment"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(report.image_url, '_blank')}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
+                        <Eye className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
                     <a
                       href={report.image_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`inline-flex items-center mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
+                      className={`inline-flex items-center justify-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         theme === 'dark'
                           ? 'bg-blue-900/50 text-blue-200 hover:bg-blue-800 border border-blue-700'
                           : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
@@ -273,110 +441,128 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
                     </a>
                   </>
                 ) : (
-                  <div className={`rounded-lg border p-8 flex flex-col items-center justify-center h-48 ${theme === 'dark' ? 'border-gray-700 bg-gray-700/30' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className={`rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center h-48 ${theme === 'dark' ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'}`}>
                     <div className={`w-12 h-12 mb-3 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
                       <span className="text-xl">📷</span>
                     </div>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-center`}>
                       Image not available
                     </p>
                   </div>
                 )}
               </div>
+            ) : (
+              <div className={`rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center h-48 ${theme === 'dark' ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'}`}>
+                <div className={`w-12 h-12 mb-3 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
+                  <span className="text-xl">📷</span>
+                </div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-center`}>
+                  No image attached
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Report Details Section */}
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>
+            Report Details
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-2`}>
+                Category
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{getCategoryIcon(report.category)}</span>
+                <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {report.category}
+                </span>
+              </div>
             </div>
-          )}
+            <div>
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-2`}>
+                Priority
+              </label>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${getPriorityColor(report.priority)}`}>
+                {report.priority}
+              </span>
+            </div>
+            <div>
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} block mb-2`}>
+                Status
+              </label>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(report.status)}`}>
+                {report.status}
+              </span>
+            </div>
+          </div>
+        </div>
 
-          {/* Details Grid */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Location */}
-              <div>
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-3 flex items-center`}>
-                  <MapPin size={20} className="mr-2" />
-                  Location
-                </h3>
-                <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-4`}>
-                  <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                    {report.location.address}
-                  </p>
-                  {report.city && (
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      City: {report.city}
-                    </p>
-                  )}
-                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Coordinates: {report.location.lat.toFixed(6)}, {report.location.lng.toFixed(6)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Category & Priority */}
-              <div>
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-3`}>
-                  Report Details
-                </h3>
-                <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-4 space-y-3`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Category:</span>
-                    <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                      {report.category}
-                    </span>
+        {/* Grievance History & Timeline Section */}
+        <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-lg border p-6`}>
+          <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-6`}>
+            Grievance History & Timeline
+          </h3>
+          
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className={`absolute left-6 top-6 bottom-0 w-0.5 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
+            
+            {/* Timeline Events */}
+            <div className="space-y-6">
+              {generateTimelineEvents(report).map((event) => (
+                <div key={event.id} className="relative flex items-start gap-4">
+                  {/* Timeline Dot */}
+                  <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${
+                    event.status === 'completed' 
+                      ? theme === 'dark' ? 'bg-green-800 text-green-200' : 'bg-green-100 text-green-800'
+                      : event.status === 'current'
+                      ? theme === 'dark' ? 'bg-blue-800 text-blue-200' : 'bg-blue-100 text-blue-800'
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    <span>{event.icon}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Priority:</span>
-                    <span className={`font-medium ${getPriorityColor(report.priority)} px-2 py-1 rounded text-sm`}>
-                      {report.priority}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Status:</span>
-                    <span className={`font-medium ${getStatusColor(report.status)} px-2 py-1 rounded text-sm border`}>
-                      {report.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Timestamps */}
-              <div className="md:col-span-2">
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-3 flex items-center`}>
-                  <Clock size={20} className="mr-2" />
-                  Timeline
-                </h3>
-                <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-4`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                        Created
+                  
+                  {/* Event Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg p-4`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                        <h4 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} text-lg`}>
+                          {event.title}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <Clock className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {formatDate(event.timestamp)}
+                          </span>
+                        </div>
                       </div>
-                      <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-1`}>
-                        {formatDate(report.created_at)}
-                      </div>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                        {getRelativeTime(report.created_at)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                        Last Updated
-                      </div>
-                      <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-1`}>
-                        {formatDate(report.updated_at)}
-                      </div>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                        {getRelativeTime(report.updated_at)}
+                      <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                        {event.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
+                          <span className="text-xs">👤</span>
+                        </div>
+                        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          By {event.actor}
+                        </span>
+                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                          • {getRelativeTime(event.timestamp)}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-6 flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <ShinyButton
             onClick={() => onNavigate('status')}
             size="lg"
