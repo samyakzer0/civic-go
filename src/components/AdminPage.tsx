@@ -152,7 +152,7 @@ function AdminPage({ onNavigate, user }: AdminPageProps) {
   }
 
   return (
-    <AdminDashboard onNavigate={handleBackToHome} user={user} />
+    <AdminDashboard onNavigate={onNavigate} user={user} />
   );
 }
 

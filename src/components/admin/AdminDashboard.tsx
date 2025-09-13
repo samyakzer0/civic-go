@@ -8,7 +8,7 @@ import ProofExplorerSimplified from '../ProofExplorerSimplified';
 import { TaskData, getTaskStatsByCategory, getAllTasksForAdmin } from '../../services/ReportService';
 
 interface AdminDashboardProps {
-  onNavigate?: () => void;
+  onNavigate?: (page: string) => void;
   user?: any; // Add user prop
 }
 
@@ -102,7 +102,7 @@ function AdminDashboard({ onNavigate, user }: AdminDashboardProps) {
           <div className="flex items-center gap-4">
             {onNavigate && (
               <button
-                onClick={onNavigate}
+                onClick={() => onNavigate && onNavigate('home')}
                 className={`p-2 ${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'} transition-colors`}
               >
                 <ArrowLeft size={24} />
@@ -395,7 +395,8 @@ function AdminDashboard({ onNavigate, user }: AdminDashboardProps) {
                       .map(task => (
                         <div
                           key={task.id}
-                          className={`px-4 py-3 border-b ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} hover:${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'}`}
+                          className={`px-4 py-3 border-b ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} hover:${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} cursor-pointer transition-colors`}
+                          onClick={() => onNavigate && onNavigate(`report-detail?reportId=${task.report_id}`)}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
@@ -434,6 +435,9 @@ function AdminDashboard({ onNavigate, user }: AdminDashboardProps) {
                               <div className="flex items-center gap-4 text-xs">
                                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
                                   Report: {task.report_id}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700'} cursor-pointer hover:${theme === 'dark' ? 'bg-blue-600/30' : 'bg-blue-200'}`}>
+                                  Click to view report
                                 </span>
                                 {task.due_date && (
                                   <span className={`${

@@ -113,12 +113,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
             src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
             alt="CivicGo Logo" 
             className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain cursor-pointer hover:scale-105 transition-transform"
-            onClick={() => {
-              // Store the logo image for the report page
-              const logoSrc = theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png";
-              localStorage.setItem('capturedImage', logoSrc);
-              onNavigate('report');
-            }}
+            onClick={() => onNavigate('home')}
             onError={(e) => {
               // Fallback to text if image fails to load
               const target = e.target as HTMLImageElement;
