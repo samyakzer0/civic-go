@@ -3,12 +3,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import {
   getCommunityStats,
   getCategoryStats,
-  getLocationStats,
   getStatusStats,
   getTrendData,
   CommunityStats,
-  CategoryStats,
-  LocationStats
+  CategoryStats
 } from '../services/AnalyticsService';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -17,7 +15,7 @@ import {
 import {
   TrendingUp, Users, MapPin, Clock, AlertCircle, CheckCircle,
   BarChart3, PieChart as PieChartIcon, Activity, Calendar,
-  Target, Zap, Award, Globe, AlertTriangle
+  Target, Zap, Award, AlertTriangle
 } from 'lucide-react';
 import Loader from './Loader';
 
@@ -35,7 +33,6 @@ function AdminAnalytics({ className = '' }: AdminAnalyticsProps) {
     resolutionRate: 0
   });
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
-  const [locationStats, setLocationStats] = useState<LocationStats[]>([]);
   const [statusStats, setStatusStats] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,28 +49,15 @@ function AdminAnalytics({ className = '' }: AdminAnalyticsProps) {
   const fetchAnalyticsData = async () => {
     try {
       setIsLoading(true);
-      const [community, categories, locations, statuses, trends] = await Promise.all([
+      const [community, categories, statuses, trends] = await Promise.all([
         getCommunityStats(),
         getCategoryStats(),
-        getLocationStats(),
         getStatusStats(),
         getTrendData('month')
       ]);
       
       setCommunityStats(community);
       setCategoryStats(categories);
-      
-      // Ensure location stats always has data
-      const locationData = locations.length > 0 ? locations : [
-        { city: 'Mumbai', count: 45, lat: 19.0760, lng: 72.8777 },
-        { city: 'Delhi', count: 38, lat: 28.7041, lng: 77.1025 },
-        { city: 'Bangalore', count: 32, lat: 12.9716, lng: 77.5946 },
-        { city: 'Chennai', count: 28, lat: 13.0827, lng: 80.2707 },
-        { city: 'Pune', count: 24, lat: 18.5204, lng: 73.8567 },
-        { city: 'Kolkata', count: 19, lat: 22.5726, lng: 88.3639 }
-      ];
-      
-      setLocationStats(locationData.slice(0, 10));
       setStatusStats(statuses);
       setTrendData(trends);
     } catch (error) {
@@ -415,108 +399,12 @@ function AdminAnalytics({ className = '' }: AdminAnalyticsProps) {
         </div>
       </div>
 
-      {/* Location Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Locations Bar Chart */}
-        <div className={`lg:col-span-2 ${
-          theme === 'dark' 
-            ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50' 
-            : 'bg-white/60 backdrop-blur-xl border-gray-100/50'
-        } rounded-xl shadow-lg border p-6`}>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
-                <MapPin className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  Top Locations
-                </h3>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Reports by geographic area
-                </p>
-              </div>
-            </div>
-            {locationStats.length === 0 && (
-              <div className="flex items-center space-x-2 text-amber-500">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-xs">No location data</span>
-              </div>
-            )}
-          </div>
-          
-          {locationStats.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <MapPin className="h-16 w-16 text-gray-400 mb-4" />
-              <h4 className={`text-lg font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                No Location Data Available
-              </h4>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} max-w-md`}>
-                Location data will appear here once users start submitting reports with location information.
-              </p>
-            </div>
-          ) : (
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <BarChart 
-                  data={locationStats.slice(0, 6)} 
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis 
-                    type="number" 
-                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                    fontSize={12}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    type="category" 
-                    dataKey="city" 
-                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                    fontSize={12}
-                    width={100}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '12px',
-                      color: theme === 'dark' ? '#ffffff' : '#000000',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                      fontSize: '14px'
-                    }}
-                    formatter={(value: any) => [`${value} reports`, 'Count']}
-                    labelStyle={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
-                  />
-                  <Bar 
-                    dataKey="count" 
-                    fill="url(#locationGradient)"
-                    radius={[0, 8, 8, 0]}
-                    animationDuration={1500}
-                    animationBegin={300}
-                  />
-                  <defs>
-                    <linearGradient id="locationGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={chartColors.secondary} stopOpacity={0.8} />
-                      <stop offset="100%" stopColor={chartColors.secondary} stopOpacity={0.3} />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* Performance Metrics */}
-        <div className={`${
-          theme === 'dark' 
-            ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50' 
-            : 'bg-white/60 backdrop-blur-xl border-gray-100/50'
-        } rounded-xl shadow-lg border p-6`}>
+      {/* Performance Metrics */}
+      <div className={`${
+        theme === 'dark'
+          ? 'bg-gray-800/60 backdrop-blur-xl border-gray-700/50'
+          : 'bg-white/60 backdrop-blur-xl border-gray-100/50'
+      } rounded-xl shadow-lg border p-6`}>
           <div className="flex items-center space-x-3 mb-6">
             <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center">
               <Award className="h-5 w-5 text-yellow-500" />
@@ -593,7 +481,6 @@ function AdminAnalytics({ className = '' }: AdminAnalyticsProps) {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

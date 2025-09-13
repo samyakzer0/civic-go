@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Clock, ExternalLink, Eye } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, ExternalLink, Eye, Droplets, Zap, Building2, Route, Trash2, FileText, CheckCircle, ArrowRight, User } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getReportById, ReportData, getThumbnailUrl, initializeStatusHistoryForExistingReports } from '../services/ReportService';
 import { ShinyButton } from './magicui/shiny-button';
@@ -134,17 +134,17 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'Water':
-        return '💧';
+        return Droplets;
       case 'Electricity':
-        return '⚡';
+        return Zap;
       case 'Infrastructure':
-        return '🏗️';
+        return Building2;
       case 'Roads':
-        return '🛣️';
+        return Route;
       case 'Sanitation':
-        return '🧹';
+        return Trash2;
       default:
-        return '📌';
+        return MapPin;
     }
   };
 
@@ -164,25 +164,25 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
           case 'Submitted':
             title = 'Grievance Filed';
             description = 'Initial complaint submitted by citizen';
-            icon = '🔵';
+            icon = 'FileText';
             color = 'blue';
             break;
           case 'In Review':
             title = 'Under Review';
             description = 'Complaint is being reviewed by authorities';
-            icon = '�';
+            icon = 'Clock';
             color = 'yellow';
             break;
           case 'Forwarded':
             title = 'Forwarded to Department';
             description = `Case forwarded to ${report.category} Department for action`;
-            icon = '🟠';
+            icon = 'ArrowRight';
             color = 'orange';
             break;
           case 'Resolved':
             title = 'Issue Resolved';
             description = 'The reported issue has been successfully resolved';
-            icon = '✅';
+            icon = 'CheckCircle';
             color = 'green';
             break;
         }
@@ -207,7 +207,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
         actor: 'Citizen',
         timestamp: report.created_at,
         status: 'completed',
-        icon: '�',
+        icon: 'FileText',
         color: 'blue'
       });
       
@@ -222,19 +222,19 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
           case 'In Review':
             title = 'Under Review';
             description = 'Complaint is being reviewed by authorities';
-            icon = '🟡';
+            icon = 'Clock';
             color = 'yellow';
             break;
           case 'Forwarded':
             title = 'Forwarded to Department';
             description = `Case forwarded to ${report.category} Department for action`;
-            icon = '�';
+            icon = 'ArrowRight';
             color = 'orange';
             break;
           case 'Resolved':
             title = 'Issue Resolved';
             description = 'The reported issue has been successfully resolved';
-            icon = '✅';
+            icon = 'CheckCircle';
             color = 'green';
             break;
         }
@@ -285,7 +285,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
         <div className="p-6 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${theme === 'dark' ? 'bg-red-900' : 'bg-red-100'} flex items-center justify-center`}>
-              <span className="text-2xl">❌</span>
+              <ExternalLink size={32} className={theme === 'dark' ? 'text-red-400' : 'text-red-500'} />
             </div>
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-2`}>
               {error || 'Report Not Found'}
@@ -443,7 +443,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
                 ) : (
                   <div className={`rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center h-48 ${theme === 'dark' ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'}`}>
                     <div className={`w-12 h-12 mb-3 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
-                      <span className="text-xl">📷</span>
+                      <Eye size={24} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                     </div>
                     <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-center`}>
                       Image not available
@@ -454,7 +454,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
             ) : (
               <div className={`rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center h-48 ${theme === 'dark' ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'}`}>
                 <div className={`w-12 h-12 mb-3 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
-                  <span className="text-xl">📷</span>
+                  <Eye size={24} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                 </div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-center`}>
                   No image attached
@@ -475,7 +475,10 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
                 Category
               </label>
               <div className="flex items-center gap-2">
-                <span className="text-xl">{getCategoryIcon(report.category)}</span>
+                {(() => {
+                  const IconComponent = getCategoryIcon(report.category);
+                  return <IconComponent size={20} className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />;
+                })()}
                 <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {report.category}
                 </span>
@@ -522,7 +525,16 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
                       ? theme === 'dark' ? 'bg-blue-800 text-blue-200' : 'bg-blue-100 text-blue-800'
                       : theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
                   }`}>
-                    <span>{event.icon}</span>
+                    {(() => {
+                      const iconMap = {
+                        FileText,
+                        Clock,
+                        ArrowRight,
+                        CheckCircle
+                      };
+                      const IconComponent = iconMap[event.icon as keyof typeof iconMap] || FileText;
+                      return <IconComponent size={20} />;
+                    })()}
                   </div>
                   
                   {/* Event Content */}
@@ -544,7 +556,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
                       </p>
                       <div className="flex items-center gap-2">
                         <div className={`w-6 h-6 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} flex items-center justify-center`}>
-                          <span className="text-xs">👤</span>
+                          <User size={12} className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} />
                         </div>
                         <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                           By {event.actor}
@@ -576,7 +588,7 @@ function ReportDetailPage({ onNavigate, reportId }: ReportDetailPageProps) {
             size="lg"
             className="flex-1 shadow-lg"
           >
-            <span>📝</span>
+            <FileText size={16} />
             Submit New Report
           </ShinyButton>
         </div>

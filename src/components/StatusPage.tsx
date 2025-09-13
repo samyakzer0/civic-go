@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
+import { ArrowLeft, ChevronRight, MapPin, Droplets, Zap, Building2, Route, Trash2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../utils/translations';
 import { getUserReports, ReportData } from '../services/ReportService';
@@ -108,17 +108,17 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'Water':
-        return '💧';
+        return 'Droplets';
       case 'Electricity':
-        return '⚡';
+        return 'Zap';
       case 'Infrastructure':
-        return '🏗️';
+        return 'Building2';
       case 'Roads':
-        return '🛣️';
+        return 'Route';
       case 'Sanitation':
-        return '🧹';
+        return 'Trash2';
       default:
-        return '📌';
+        return 'MapPin';
     }
   };
 
@@ -157,20 +157,20 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
       </div>
 
       {/* Filter bar */}
-      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-4 border-b overflow-x-auto`}>
-        <div className="flex space-x-2">
+      <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-4 border-b`}>
+        <div className="flex flex-wrap gap-2 max-w-4xl mx-auto">
           {categories.map(category => (
             <button
               key={category}
               onClick={() => setFilter(category === 'All' ? null : category)}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 (filter === category || (category === 'All' && filter === null))
                   ? theme === 'dark'
-                    ? 'bg-blue-700 text-white'
-                    : 'bg-blue-600 text-white' 
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-blue-600 text-white shadow-md' 
                   : theme === 'dark'
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
               }`}
             >
               {category}
@@ -195,78 +195,95 @@ function StatusPage({ onNavigate, isSignedIn, userId = 'anon_user' }: StatusPage
             </button>
           </div>
         ) : (
-          <div className="space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+          <div className="space-y-6">
             {filteredReports.map((report) => (
               <div
                 key={report.report_id}
                 className={`${
                   theme === 'dark' 
-                    ? 'bg-gray-800/40 backdrop-blur-md border-gray-700/50' 
-                    : 'bg-white/40 backdrop-blur-md border-gray-100/50'
-                } p-6 rounded-xl shadow-lg border hover:shadow-xl transition-all hover:scale-[1.02] relative overflow-hidden group`}
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-white border-gray-200'
+                } p-6 rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 relative overflow-hidden group cursor-pointer`}
+                onClick={() => onNavigate(`report-detail?reportId=${report.report_id}`)}
               >
-                {/* Decorative elements for glass effect */}
-                <div className={`absolute inset-0 ${
+                {/* Status indicator bar */}
+                <div className={`absolute top-0 left-0 w-full h-1 ${
                   report.status === 'Resolved'
-                    ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10'
+                    ? 'bg-green-500'
                     : report.status === 'Forwarded'
-                    ? 'bg-gradient-to-r from-blue-500/10 to-indigo-500/10'
+                    ? 'bg-blue-500'
                     : report.status === 'In Review'
-                    ? 'bg-gradient-to-r from-yellow-500/10 to-amber-500/10'
-                    : 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10'
-                } opacity-30`}></div>
-                
-                <div className={`absolute -inset-1 ${
-                  report.status === 'Resolved'
-                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20'
-                    : report.status === 'Forwarded'
-                    ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20'
-                    : report.status === 'In Review'
-                    ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20'
-                    : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20'
-                } rounded-xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity`}></div>
+                    ? 'bg-yellow-500'
+                    : 'bg-gray-400'
+                }`}></div>
                 
                 <div className="relative">
                   {/* Reference ID */}
-                  <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'} mb-2`}>
-                    Ref: {report.report_id}
+                  <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-3 font-mono`}>
+                    REF: {report.report_id}
                   </div>
                   
                   {/* Title and Status */}
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} flex-1 flex items-center`}>
-                      <span className="mr-2">{getCategoryIcon(report.category)}</span>
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} flex-1 flex items-center gap-2`}>
+                      {(() => {
+                        const iconName = getCategoryIcon(report.category);
+                        const IconComponent = {
+                          Droplets,
+                          Zap,
+                          Building2,
+                          Route,
+                          Trash2,
+                          MapPin
+                        }[iconName] || MapPin;
+                        return <IconComponent size={18} className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />;
+                      })()}
                       {report.title}
                     </h3>
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(report.status)}`}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(report.status)}`}
                     >
                       {report.status}
                     </span>
                   </div>
                   
-                  {/* Location */}
-                  <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm mb-2 flex items-center`}>
-                    <MapPin size={14} className="inline mr-1" />
-                    {report.location.address}
+                  {/* Category and Priority */}
+                  <div className="flex items-center gap-4 mb-3">
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Category: <span className="font-medium">{report.category}</span>
+                    </span>
+                    <span className={`text-sm px-2 py-1 rounded ${
+                      report.priority === 'Urgent' 
+                        ? theme === 'dark' ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-800'
+                        : report.priority === 'High'
+                        ? theme === 'dark' ? 'bg-orange-900 text-orange-200' : 'bg-orange-100 text-orange-800'
+                        : report.priority === 'Medium'
+                        ? theme === 'dark' ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'
+                        : theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {report.priority}
+                    </span>
                   </div>
                   
-                  {/* Last updated */}
-                  <div className="flex justify-between items-center mt-4">
+                  {/* Location */}
+                  <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4 flex items-center gap-1`}>
+                    <MapPin size={14} />
+                    <span className="truncate">{report.location.address}</span>
+                  </div>
+                  
+                  {/* Footer */}
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                     <div className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'} text-sm`}>
-                      Updated: {getRelativeTime(report.updated_at)}
+                      Updated {getRelativeTime(report.updated_at)}
                     </div>
                     
-                    <button
-                      onClick={() => onNavigate(`report-detail?reportId=${report.report_id}`)}
-                      className={`p-2 rounded-full ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                          : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                      }`}
-                    >
+                    <div className={`p-2 rounded-full transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    }`}>
                       <ChevronRight size={16} />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
