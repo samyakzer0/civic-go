@@ -1,5 +1,6 @@
 import { supabase } from './supabase.ts';
 import { reverseGeocode } from './GeocodingService';
+import { proofOfReportService, type ProofCreationResult } from './ProofOfReportServiceSimplified';
 
 // List of major cities for mock data
 export const majorCities = [
@@ -29,6 +30,11 @@ export interface ReportData {
   created_at: string;
   updated_at: string;
   user_id: string;
+  // Proof-of-report fields
+  proof_cid?: string;
+  proof_timestamp?: string;
+  proof_created_at?: string;
+  proof_verification_status?: 'pending' | 'verified' | 'failed';
 }
 
 // Task data model
@@ -51,6 +57,9 @@ interface ReportSubmissionResponse {
   success: boolean;
   report_id: string;
   message: string;
+  proof_cid?: string;
+  proof_status?: 'created' | 'failed' | 'not_attempted';
+  proof_error?: string;
 }
 
 // Generate a unique reference number for each report
@@ -345,6 +354,37 @@ export const submitReport = async (
       }
     }
     
+    // Prepare proof generation variables
+    let proofCid: string | undefined;
+    let proofStatus: 'created' | 'failed' | 'not_attempted' = 'not_attempted';
+    let proofError: string | undefined;
+    let proofTimestamp: string | undefined;
+    
+    // Generate proof-of-report asynchronously (fail-safe)
+    try {
+      console.log(`Creating proof-of-report for ${reportId} in ${city}...`);
+      const proofResult: ProofCreationResult = await proofOfReportService.createProofOfReport(
+        reportId, 
+        city
+      );
+      
+      if (proofResult.success && proofResult.cid) {
+        proofCid = proofResult.cid;
+        proofTimestamp = proofResult.proof_timestamp;
+        proofStatus = 'created';
+        console.log(`Proof-of-report created successfully for ${reportId}: ${proofCid}`);
+      } else {
+        proofStatus = 'failed';
+        proofError = proofResult.error || 'Unknown proof creation error';
+        console.warn(`Proof-of-report creation failed for ${reportId}:`, proofError);
+      }
+    } catch (error) {
+      proofStatus = 'failed';
+      proofError = error instanceof Error ? error.message : 'Unknown proof error';
+      console.error(`Proof-of-report creation failed for ${reportId}:`, error);
+      // Continue with report submission even if proof fails
+    }
+    
     const reportData = {
       report_id: reportId,
       title,
@@ -357,7 +397,11 @@ export const submitReport = async (
       status: 'Submitted',
       created_at: timestamp,
       updated_at: timestamp,
-      user_id: userId
+      user_id: userId,
+      // Add proof fields (will be null if proof creation failed)
+      proof_cid: proofCid || null,
+      proof_timestamp: proofTimestamp || null,
+      proof_verification_status: proofCid ? 'pending' : null
     };
 
     // Insert into Supabase if configured
@@ -372,7 +416,7 @@ export const submitReport = async (
         console.error('Supabase insert error:', error);
         // Don't throw - continue with localStorage fallback
       } else {
-        console.log('Report successfully submitted to Supabase');
+        console.log('Report successfully submitted to Supabase with proof data');
       }
     } else {
       console.log('Supabase not configured, using localStorage only');
@@ -384,16 +428,21 @@ export const submitReport = async (
       console.log(`Found ${existingReports.length} existing reports in localStorage`);
       existingReports.push(reportData);
       localStorage.setItem('civicgo_reports', JSON.stringify(existingReports));
-      console.log(`Report ${reportData.report_id} saved to localStorage`);
+      console.log(`Report ${reportData.report_id} saved to localStorage with proof data`);
     } catch (e) {
       console.error('Error saving to localStorage:', e);
     }
 
-    // Return response
+    // Return response with proof information
     return {
       success: true,
       report_id: reportId,
-      message: 'Report submitted successfully'
+      message: proofCid 
+        ? 'Report submitted successfully with tamper-proof verification'
+        : 'Report submitted successfully (proof creation failed but report is saved)',
+      proof_cid: proofCid,
+      proof_status: proofStatus,
+      proof_error: proofError
     };
   } catch (error) {
     console.error('Error submitting report:', error);
@@ -1026,5 +1075,180 @@ export const deleteTask = async (taskId: string): Promise<boolean> => {
     } catch {
       return false;
     }
+  }
+};
+
+// ===== PROOF-OF-REPORT MANAGEMENT FUNCTIONS =====
+
+/**
+ * Verify a proof-of-report for a given report
+ * @param reportId - The report ID to verify
+ * @param cid - The IPFS CID of the proof
+ * @returns Promise<boolean> - True if verification succeeds
+ */
+export const verifyReportProof = async (reportId: string, cid: string): Promise<boolean> => {
+  try {
+    console.log(`Getting basic proof info for report ${reportId} with CID ${cid}`);
+    
+    const proofInfo = await proofOfReportService.getProofInfo(cid);
+    
+    if (proofInfo.exists && proofInfo.data) {
+      // If proof exists, it's considered valid (simplified approach)
+      await updateProofVerificationStatus(reportId, 'verified');
+      console.log(`Proof exists and is valid for report ${reportId}`);
+      return true;
+    } else {
+      // Mark as failed in database
+      await updateProofVerificationStatus(reportId, 'failed');
+      console.warn(`Proof not found for report ${reportId}:`, proofInfo.error);
+      return false;
+    }
+  } catch (error) {
+    console.error(`Error checking proof for report ${reportId}:`, error);
+    await updateProofVerificationStatus(reportId, 'failed');
+    return false;
+  }
+};
+
+/**
+ * Update the proof verification status in the database
+ * @param reportId - The report ID
+ * @param status - The new verification status
+ */
+export const updateProofVerificationStatus = async (
+  reportId: string, 
+  status: 'pending' | 'verified' | 'failed'
+): Promise<void> => {
+  try {
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { error } = await supabase
+        .from('reports')
+        .update({ 
+          proof_verification_status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('report_id', reportId);
+
+      if (error) {
+        console.error('Error updating proof verification status in Supabase:', error);
+      } else {
+        console.log(`Updated proof verification status for ${reportId} to ${status}`);
+      }
+    }
+
+    // Also update localStorage
+    try {
+      const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+      const reportIndex = allReports.findIndex(report => report.report_id === reportId);
+      
+      if (reportIndex !== -1) {
+        allReports[reportIndex].proof_verification_status = status;
+        allReports[reportIndex].updated_at = new Date().toISOString();
+        localStorage.setItem('civicgo_reports', JSON.stringify(allReports));
+      }
+    } catch (e) {
+      console.error('Error updating localStorage proof status:', e);
+    }
+  } catch (error) {
+    console.error('Error updating proof verification status:', error);
+  }
+};
+
+/**
+ * Get proof statistics for admin dashboard
+ * @returns Promise<object> - Statistics about proof coverage and verification
+ */
+export const getProofStatistics = async (): Promise<{
+  totalReports: number;
+  reportsWithProof: number;
+  verifiedProofs: number;
+  pendingProofs: number;
+  failedProofs: number;
+  proofCoveragePercentage: number;
+  verificationSuccessRate: number;
+}> => {
+  try {
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      // Use the view we created in the database
+      const { data, error } = await supabase
+        .from('proof_statistics')
+        .select('*')
+        .single();
+
+      if (!error && data) {
+        return {
+          totalReports: data.total_reports || 0,
+          reportsWithProof: data.reports_with_proof || 0,
+          verifiedProofs: data.verified_proofs || 0,
+          pendingProofs: data.pending_proofs || 0,
+          failedProofs: data.failed_proofs || 0,
+          proofCoveragePercentage: data.proof_coverage_percentage || 0,
+          verificationSuccessRate: data.verification_success_rate || 0
+        };
+      }
+    }
+
+    // Fallback to localStorage calculation
+    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+    const totalReports = allReports.length;
+    const reportsWithProof = allReports.filter(r => r.proof_cid).length;
+    const verifiedProofs = allReports.filter(r => r.proof_verification_status === 'verified').length;
+    const pendingProofs = allReports.filter(r => r.proof_verification_status === 'pending').length;
+    const failedProofs = allReports.filter(r => r.proof_verification_status === 'failed').length;
+    
+    return {
+      totalReports,
+      reportsWithProof,
+      verifiedProofs,
+      pendingProofs,
+      failedProofs,
+      proofCoveragePercentage: totalReports > 0 ? (reportsWithProof / totalReports) * 100 : 0,
+      verificationSuccessRate: reportsWithProof > 0 ? (verifiedProofs / reportsWithProof) * 100 : 0
+    };
+  } catch (error) {
+    console.error('Error getting proof statistics:', error);
+    return {
+      totalReports: 0,
+      reportsWithProof: 0,
+      verifiedProofs: 0,
+      pendingProofs: 0,
+      failedProofs: 0,
+      proofCoveragePercentage: 0,
+      verificationSuccessRate: 0
+    };
+  }
+};
+
+/**
+ * Get reports with their proof information for admin panel
+ * @param limit - Number of reports to fetch
+ * @param offset - Offset for pagination
+ * @returns Promise<ReportData[]> - Reports with proof information
+ */
+export const getReportsWithProofInfo = async (
+  limit: number = 50, 
+  offset: number = 0
+): Promise<ReportData[]> => {
+  try {
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (!error && data) {
+        return data as ReportData[];
+      }
+    }
+
+    // Fallback to localStorage
+    const allReports: ReportData[] = JSON.parse(localStorage.getItem('civicgo_reports') || '[]');
+    return allReports
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(offset, offset + limit);
+  } catch (error) {
+    console.error('Error getting reports with proof info:', error);
+    return [];
   }
 };

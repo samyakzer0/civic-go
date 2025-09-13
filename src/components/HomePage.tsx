@@ -112,8 +112,7 @@ function HomePage({ onNavigate, userId = 'anon_user' }: HomePageProps) {
           <img 
             src={theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png"} 
             alt="CivicGo Logo" 
-            className="align-middle"
-            className="w-16 h-16 sm:w-30 sm:h-30 lg:w-24 lg:h-24 object-contain cursor-pointer hover:scale-105 transition-transform"
+            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain cursor-pointer hover:scale-105 transition-transform"
             onClick={() => {
               // Store the logo image for the report page
               const logoSrc = theme === 'dark' ? "/assets/images/logo.png" : "/assets/images/logo2.png";
